@@ -1,6 +1,5 @@
 import json
 import asyncio
-import websockets
 
 from config import RendezvousConfig, ProtocolConfig
 from state import LOCAL_STATE
