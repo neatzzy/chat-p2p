@@ -45,7 +45,7 @@ class RendezvousConnection:
             response = json.loads(response_json)
 
             # Checar status da resposta
-            if response.get("status") != "ok":
+            if response.get("status") != "OK":
                 raise RendezvousConnectionError(f"Erro do servidor Rendezvous: {response.get('error', 'Desconhecido')}")
             
             return response
@@ -63,7 +63,7 @@ class RendezvousConnection:
             "namespace": LOCAL_STATE.namespace,
             "name": LOCAL_STATE.name,
             "port": LOCAL_STATE.listen_port,
-            "ttl": ProtocolConfig.REGISTER_TTL_REFRESH_SEC
+            "ttl": RendezvousConfig.REGISTER_REFRESH_INTERVAL_SEC
         }
 
         try:
@@ -81,7 +81,7 @@ class RendezvousConnection:
         """Descobre peers registrados no servidor Rendezvous."""
         message = { "type": "DISCOVER" }
 
-        if namespace:
+        if namespace: 
             message["namespace"] = namespace
 
         try:

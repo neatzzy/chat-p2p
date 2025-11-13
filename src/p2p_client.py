@@ -1,0 +1,1 @@
+# lógica principal (registro, descoberta, reconexão, CLI)

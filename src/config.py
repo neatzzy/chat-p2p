@@ -22,8 +22,8 @@ class RendezvousConfig:
     PORT = RZV_PORT
     
     # Intervalo (em segundos) para refresh do REGISTER e DISCOVER contínuo
-    REGISTER_REFRESH_INTERVAL_SEC = 3600 # 1 hora
-    DISCOVER_INTERVAL_SEC = 10
+    REGISTER_REFRESH_INTERVAL_SEC = 7200 # 2 horas
+    DISCOVER_INTERVAL_SEC = 10 # Descoberta de peer's a cada 10 segundos
 
 
 # --- Configurações do Protocolo P2P ---
@@ -38,9 +38,6 @@ class ProtocolConfig:
 
     # Time-to-Live (TTL) fixo
     TTL = 1 # Fixo em 1
-
-    # Intervalo de refresh do registro no Rendezvous
-    REGISTER_TTL_REFRESH_SEC = 3600 # 1 hora
 
     # Keep-Alive (PING/PONG)
     PING_INTERVAL_SEC = 30 # Envio de PING a cada 30 segundos
