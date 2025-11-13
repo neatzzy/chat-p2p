@@ -27,7 +27,7 @@ class RendezvousConnection:
             data_to_send = json_message.encode(ProtocolConfig.ENCODING) + ProtocolConfig.MESSAGE_DELIMITER
 
             # Checa o tamanho da mensagem
-            if len(data_to_send) > ProtocolConfig.MAX_MESSAGE_SIZE:
+            if len(data_to_send) > ProtocolConfig.MAX_MESSAGE_SIZE_BYTES:
                 raise RendezvousConnectionError("Mensagem excede o tamanho máximo permitido.")
             
             writer.write(data_to_send)
@@ -53,7 +53,7 @@ class RendezvousConnection:
             raise RendezvousConnectionError(f"Erro de conexão com o Rendezvous: {str(e)}")
         except json.JSONDecodeError as e:
             raise RendezvousConnectionError(f"Resposta inválida do servidor Rendezvous: {str(e)}")
-  
+
     async def register(self) -> bool:
         """Registra o peer local no servidor Rendezvous.
         Atualiza o estado local com 'observed_ip' e 'observed_port'."""
