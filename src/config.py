@@ -39,6 +39,9 @@ class ProtocolConfig:
     # Time-to-Live (TTL) fixo
     TTL = 1 # Fixo em 1
 
+    # Intervalo de refresh do registro no Rendezvous
+    REGISTER_TTL_REFRESH_SEC = 3600 # 1 hora
+
     # Keep-Alive (PING/PONG)
     PING_INTERVAL_SEC = 30 # Envio de PING a cada 30 segundos
     

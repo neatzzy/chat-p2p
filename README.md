@@ -50,10 +50,26 @@ Após descobrir um peer, o cliente estabelece uma conexão TCP persistente e uti
 
 O projeto segue um modelo de arquitetura modular, onde cada arquivo Python tem uma responsabilidade única e clara, facilitando a manutenção e o desenvolvimento concorrente.
 
-| Módulo                         | Responsabilidade                                                                                                                     |
-| :----------------------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
-| **`main.py`**                  | Ponto de entrada. Inicialização do sistema de _logging_ e do orquestrador principal (`p2p_client.py`).                               |
-| **`config.py`**                | **Configuração.** Armazena constantes do sistema (endereço do Rendezvous, intervalos, limites).                                      |
-| **`state.py`**                 | **Dados Compartilhados.** Armazena a identidade do peer local e a estrutura de dados da **`PeerTable`** (lista de peers conhecidos). |
-| **`rendezvous_connection.py`** | **Interface Rendezvous.** Lógica para construir e enviar mensagens `REGISTER`, `DISCOVER`, `UNREGISTER` e processar suas respostas.  |
-| **`peer_table.py`**            | **Gerenciamento de Peers.** Lógica                                                                                                   |
+| Módulo                         | Responsabilidade                                                                                                                                                                           |
+| :----------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`main.py`**                  | Ponto de entrada. Inicialização do sistema de _logging_ e do orquestrador principal (`p2p_client.py`).                                                                                     |
+| **`config.py`**                | **Configuração.** Armazena constantes do sistema (endereço do Rendezvous, intervalos, limites).                                                                                            |
+| **`state.py`**                 | **Dados Compartilhados.** Armazena a identidade do peer local e a estrutura de dados da **`PeerTable`** (lista de peers conhecidos).                                                       |
+| **`rendezvous_connection.py`** | **Interface Rendezvous.** Lógica para construir e enviar mensagens `REGISTER`, `DISCOVER`, `UNREGISTER` e processar suas respostas.                                                        |
+| **`peer_table.py`**            | **Gerenciamento de Peers.** Lógica para atualizar a lista de peers, marcar como `STALE` e aplicar a política de **backoff exponencial** para reconexão.                                    |
+| **`peer_connection.py`**       | **Camada TCP.** Gerencia uma única conexão TCP, manipulação de JSON (codificação/decodificação) e o _Handshake_ (`HELLO`/`HELLO_OK`).                                                      |
+| **`keep_alive.py`**            | **Keep-Alive.** Agendamento periódico de `PING`s e cálculo/registro do RTT.                                                                                                                |
+| **`message_router.py`**        | **Roteamento de Mensagens.** Recebe mensagens de _todos_ os `peer_connection` e decide se deve processar localmente (ex: `PONG`, `ACK`) ou encaminhar/difundir a mensagem (`SEND`, `PUB`). |
+| **`p2p_client.py`**            | **Orquestrador Central.** Controla o fluxo de trabalho: agenda tarefas de registro/descoberta, inicia a reconciliação da rede e expõe os métodos para a CLI.                               |
+| **`cli.py`**                   | **Interface de Usuário.** Lida com a entrada do usuário (`/msg`, `/pub`, `/quit`) e as traduz em ações do `p2p_client`.                                                                    |
+
+---
+
+## 🏃 Como Executar
+
+**(Instruções a serem preenchidas após a implementação dos módulos de inicialização.)**
+
+```bash
+# Exemplo
+$ python3 main.py --name alice --namespace CIC --port 7070
+```
