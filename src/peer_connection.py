@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 from config import ProtocolConfig
 from state import PeerInfo, LOCAL_STATE
 from peer_table import PEER_MANAGER
-#from message_router import MESSAGE_ROUTER
+from message_router import MESSAGE_ROUTER
 
 class PeerConnection:
     """Gerencia a conexão P2P com outro peer."""
@@ -99,7 +99,7 @@ class PeerConnection:
                 message = self._decode_message(data)
 
                 # Encaminha a mensagem para o roteador de mensagens
-                #MESSAGE_ROUTER.handle_incoming_message(self, self.peer.peer_id)
+                MESSAGE_ROUTER.handle_incoming_message(self, message)
                 print(f"[PeerConnection] Mensagem recebida do peer {self.peer_info.peer_id}: {message}")
         except asyncio.TimeoutError:
             print(f"[PeerConnection] Timeout ao ler do peer {self.peer_info.peer_id}")
