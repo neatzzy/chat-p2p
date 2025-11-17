@@ -1,12 +1,13 @@
 import json
 import asyncio
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 
 from config import ProtocolConfig
 from state import PeerInfo, LOCAL_STATE
 from peer_table import PEER_MANAGER
-from message_router import MESSAGE_ROUTER
+if TYPE_CHECKING:
+    from message_router import MESSAGE_ROUTER
 
 class PeerConnection:
     """Gerencia a conexão P2P com outro peer."""
@@ -125,7 +126,7 @@ class PeerConnection:
     
     # Iniciar conexãoes OUTBOUND
 
-    async def create_outbound_connection(peer_info: PeerInfo) -> Optional['PeerConnection']:
+async def create_outbound_connection(peer_info: PeerInfo) -> Optional['PeerConnection']:
         """Tenta estabelecer uma conexão TCP de saída com o peer e executa o Handshake."""
         try:
             reader, writer = await asyncio.open_connection(peer_info.ip, peer_info.port)

@@ -4,7 +4,7 @@ import asyncio
 import sys 
 import threading
 
-# from p2p_client import P2PClient, P2P_ORCHESTRATOR, set_local_identity
+from p2p_client import P2PClient, P2P_ORCHESTRATOR, set_local_identity
 # from main import setup_logging
 
 @click.group()
@@ -23,30 +23,27 @@ def start(name, namespace, port, log_level):
     click.echo(f"✨ Iniciando PyP2p como {name}@{namespace} na porta {port}...")
 
     # Configura a identidade local
-    # set_local_identity(name, namespace, port)
+    set_local_identity(name, namespace, port)
 
     # Configura o logging
     # setup_logging(log_level)
 
     # Inicializa o Orquestrador P2P
-    # client = P2PClient()
+    client = P2PClient()
 
     # Inicia o loop assíncrono em uma thread separada
-    # asyncio_thread = threading.Thread(target=client.start_async_loop, daemon=True)
-    # asyncio_thread.start()
-
-    # Inicia a interface CLI
-    # loop_cli_commands(client)
+    asyncio_thread = threading.Thread(target=asyncio.run, args=(client.start(name, namespace, port),))
+    asyncio_thread.start()
 
     click.echo("🚀 Cliente P2P iniciado com sucesso! Use '/quit' para sair.")
 
-    command_loop(None)  # Substituir None por client quando descomentado
+    command_loop(client)
 
 def command_loop(client):
       """Loop de comandos CLI para interagir com o cliente P2P."""
       while True:
           command = input(">> ")
-          handle_client_commands(None, command)  # Substituir None por client quando descomentado
+          handle_client_commands(client, command)
 
 def handle_client_commands(client, raw_command: str):
     """Processa comandos interativos para o cliente P2P."""
@@ -57,14 +54,14 @@ def handle_client_commands(client, raw_command: str):
         if len(parts) == 3:
             dst_peer_id = parts[1]
             payload = parts[2]
-            # client.send_direct_message(dst_peer_id, payload)
+            client.send_direct_message(dst_peer_id, payload)
             click.echo(f"Enviando SEND para {dst_peer_id}: '{payload}'")
         else:
             click.echo("Uso: /msg <peer_id> <mensagem>")
     elif command == '/peers':
         if len(parts) == 2:
             namespace = parts[1]
-            # client.discover_peers(namespace)
+            client.discover_peers(namespace)
             click.echo(f"Descobrindo peers no namespace '{namespace}'...")
         else:
             click.echo("Uso: /peers [* | #namespace]")
@@ -72,36 +69,36 @@ def handle_client_commands(client, raw_command: str):
         if len(parts) == 3:
             dst = parts[1]
             payload = parts[2]
-            # client.publish_message(dst, payload)
+            client.publish_message(dst, payload)
             click.echo(f"Publicando mensagem para '{dst}': '{payload}'")
         else:
             click.echo("Uso: /pub * <mensagem> ou /pub #<namespace> <mensagem>")
     elif command == '/conn':
         if len(parts) == 1:
-            # connections = client.get_active_connections()
-            # for conn in connections:
-            #     click.echo(f"- {conn}")
+            connections = client.get_active_connections()
+            for conn in connections:
+                click.echo(f"- {conn}")
             click.echo("Listando conexões ativas...")
         else:
             click.echo("Uso: /conn")
     elif command == '/rtt':
         if len(parts) == 1:
-            # rtts = client.get_average_rtts()
-            # for peer_id, rtt in rtts.items():
-            #     click.echo(f"- {peer_id}: {rtt} ms")
+            rtts = client.get_average_rtts()
+            for peer_id, rtt in rtts.items():
+                click.echo(f"- {peer_id}: {rtt} ms")
             click.echo("Exibindo RTT médio por peer...")
         else:
             click.echo("Uso: /rtt")
     elif command == '/reconnect':
         if len(parts) == 1:
-            # client.reconnect_peers()
+            client.reconnect_peers()
             click.echo("Forçando reconciliação de peers...")
         else:
             click.echo("Uso: /reconnect")
     elif command == '/log':
         if len(parts) == 2:
             level = parts[1].upper()
-            # client.set_log_level(level)
+            client.set_log_level(level)
             click.echo(f"Nível de log alterado para {level}")
         else:
             click.echo("Uso: /log <nível>")

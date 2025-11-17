@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import time
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 
 # --- Estruturas de Dados ---
 
