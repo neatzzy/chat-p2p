@@ -2,6 +2,8 @@
 
 import asyncio
 import time
+import uuid
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 from peer_connection import PeerConnection
@@ -104,6 +106,74 @@ class MessageRouter:
             await connection.close()
         else:
             print(f"[MessageRouter] Tipo de mensagem desconhecido de {peer_id}: {msg_type}")
+
+    def get_timestamp(self) -> str:
+        # Retorna timestamp UTC ISO 8601.
+        return datetime.now(timezone.utc).isoformat()
+
+    async def handle_ack_timeout(self, msg_id: str, peer_id: str):
+        # Mensagens sem ACK após 5s geram aviso de timeout no log.
+        try:
+            await asyncio.sleep(5)
+            if(msg_id in self.pending_acks):
+                del self.pending_acks[msg_id]
+                print(f"\n[Timeout] A mensagem {msg_id} para {peer_id} expirou (sem ACK).\n> ", end="")
+        except asyncio.CancelledError:
+            pass
+
+    async def send_unicast(self, target_peer_id: str, payload: str, require_ack: bool = False):
+        # Envia mensagem direta
+        if target_peer_id not in self.connections:
+            print(f"[Erro] Sem conexão ativa com {target_peer_id}.")
+            return
+    
+        connection = self.connections[target_peer_id]
+        msg_id = str(uuid.uuid4())
+
+        message = {
+            "type": "SEND",
+            "msg_id": msg_id,
+            "src": LOCAL_STATE.peer_id,
+            "dst": target_peer_id,
+            "payload": payload,
+            "require_ack": require_ack,
+            "timestamp": self.get_timestamp(),
+            "ttl": 1
+        }
+
+    async def send_ping(self, target_peer_id: str):
+        # Envia PING 
+        if target_peer_id not in self.connections:
+            return
+
+        connection = self.connections[target_peer_id]
+        msg_id = str(uuid.uuid4())
+
+        message = {
+            "type": "PING",
+            "msg_id": msg_id,
+            "src": LOCAL_STATE.peer_id,
+            "timestamp": self.get_timestamp(),
+            "ttl": 1
+        }
+
+        self.pending_pings[msg_id] = time.time()
+        await connection.send_message(message)
+
+    async def send_pong(self, connection: PeerConnection, msg_id: str, target_peer_id: str):
+        # Envia PONG
+        message = {
+            "type": "PONG",
+            "msg_id": msg_id, 
+            "src": LOCAL_STATE.peer_id,
+            "dst": target_peer_id,
+            "timestamp": self.get_timestamp(),
+            "ttl": 1
+        }
+        await connection.send_message(message)
+
+    
+    
 
 # Instância
 MESSAGE_ROUTER = MessageRouter()
