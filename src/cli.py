@@ -62,17 +62,49 @@ def handle_client_commands(client, raw_command: str):
         else:
             click.echo("Uso: /msg <peer_id> <mensagem>")
     elif command == '/peers':
-        pass
+        if len(parts) == 2:
+            namespace = parts[1]
+            # client.discover_peers(namespace)
+            click.echo(f"Descobrindo peers no namespace '{namespace}'...")
+        else:
+            click.echo("Uso: /peers [* | #namespace]")
     elif command == '/pub':
-        pass
+        if len(parts) == 3:
+            dst = parts[1]
+            payload = parts[2]
+            # client.publish_message(dst, payload)
+            click.echo(f"Publicando mensagem para '{dst}': '{payload}'")
+        else:
+            click.echo("Uso: /pub * <mensagem> ou /pub #<namespace> <mensagem>")
     elif command == '/conn':
-        pass
+        if len(parts) == 1:
+            # connections = client.get_active_connections()
+            # for conn in connections:
+            #     click.echo(f"- {conn}")
+            click.echo("Listando conexões ativas...")
+        else:
+            click.echo("Uso: /conn")
     elif command == '/rtt':
-        pass
+        if len(parts) == 1:
+            # rtts = client.get_average_rtts()
+            # for peer_id, rtt in rtts.items():
+            #     click.echo(f"- {peer_id}: {rtt} ms")
+            click.echo("Exibindo RTT médio por peer...")
+        else:
+            click.echo("Uso: /rtt")
     elif command == '/reconnect':
-        pass
+        if len(parts) == 1:
+            # client.reconnect_peers()
+            click.echo("Forçando reconciliação de peers...")
+        else:
+            click.echo("Uso: /reconnect")
     elif command == '/log':
-        pass
+        if len(parts) == 2:
+            level = parts[1].upper()
+            # client.set_log_level(level)
+            click.echo(f"Nível de log alterado para {level}")
+        else:
+            click.echo("Uso: /log <nível>")
     elif command == '/help':
         click.echo("""Comandos disponíveis:
 /msg <peer_id> <mensagem> - Envia uma mensagem direta para o peer especificado.
