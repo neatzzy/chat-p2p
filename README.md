@@ -73,3 +73,6 @@ O projeto segue um modelo de arquitetura modular, onde cada arquivo Python tem u
 # Exemplo
 $ python3 main.py --name alice --namespace CIC --port 7070
 ```
+## Roteiro
+
+https://github.com/mfcaetano/pyp2p-rdv
