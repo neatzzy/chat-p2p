@@ -32,7 +32,7 @@ def start(name, namespace, port, log_level):
     client = P2PClient()
 
     # Inicia o loop assíncrono em uma thread separada
-    asyncio_thread = threading.Thread(target=asyncio.run, args=(client.start(name, namespace, port),))
+    asyncio_thread = threading.Thread(target=asyncio.run, args=(client.start(name, namespace, port),), daemon=True)
     asyncio_thread.start()
 
     click.echo("🚀 Cliente P2P iniciado com sucesso! Use '/quit' para sair.")

@@ -1,6 +1,7 @@
 # lógica principal (registro, descoberta, reconexão, CLI)
 import asyncio
 import time
+import uuid
 from typing import Optional, Dict, Any
 
 # Importações internas
@@ -9,6 +10,7 @@ from state import LOCAL_STATE, PeerInfo
 from peer_table import PEER_MANAGER
 from rendezvous_connection import RENDEZVOUS_CONNECTION
 from peer_connection import create_outbound_connection, PeerConnection
+from message_router import MESSAGE_ROUTER
 
 class P2PClient:
   """Orquestrador central do cliente P2P. Gerencia o ciclo de vida da aplicação, tarefas periódicas e reconciliação da rede."""
@@ -16,7 +18,7 @@ class P2PClient:
     self._is_running = False
     self._listener_task: Optional[asyncio.Task] = None
     self._periodic_tasks: Dict[str, asyncio.Task] = {} 
-    self.active_connections: Dict[str, Any] = {}
+    self.active_connections: Dict[str, PeerConnection] = {}
       
   # Ciclo de vida e inicialização
 
@@ -72,7 +74,7 @@ class P2PClient:
 
   async def _run_discovery_and_reconcile(self):
     """Executa a descoberta de peers e reconciliação da tabela de peers."""
-    print("[Discvery] Iniciando descoberta de peers...")
+    print("[Discovery] Iniciando descoberta de peers...")
     peers_list = await RENDEZVOUS_CONNECTION.discover(namespace=LOCAL_STATE.namespace)
 
     PEER_MANAGER.update_from_discovery(peers_list)
@@ -148,21 +150,67 @@ class P2PClient:
   
   # Funcões para a CLI
 
-  def send_direct_message(self, peer_id: str, message: str):
+  def _get_msg_id(self) -> str:
+    """Gera um ID único para mensagens."""
+    return str(uuid.uuid4())
+
+  def send_direct_message(self, dst_peer_id: str, message: str):
     """Envia uma mensagem direta para um peer específico."""
-    pass
+    conn = self.active_connections.get(dst_peer_id)
+
+    if not conn:
+      print(f"[Client ERROR] Conexão para peer_id {dst_peer_id} não encontrada.")
+      return
+    
+    message = {
+      "type": "SEND",
+      "msg_id": self._get_msg_id(),
+      "src": LOCAL_STATE.peer_id,
+      "dst": dst_peer_id,
+      "payload": message,
+      "require_ack": True,
+      "ttl": ProtocolConfig.TTL}
+    
+    # PeerConnection lida com o envio real
+    asyncio.create_task(conn.send_message(message))
+    print(f"[Client] Mensagem SEND enviada para {dst_peer_id}.")
 
   def publish_message(self, namespace: str, message: str):
-    """Publica uma mensagem em um namespace específico."""
-    pass
+    """Publica uma mensagem em um namespace ou globalmente."""
+    pub_message = {
+      "type": "PUB",
+      "msg_id": self._get_msg_id(),
+      "src": LOCAL_STATE.peer_id,
+      "dst": namespace,
+      "payload": message,
+      "require_ack": False,
+      "ttl": ProtocolConfig.TTL}
+    
+    # MESSAGE_ROUTER.handle_outbound_pub(pub_message, self.active_connections)
+    print(f"[Client] Mensagem PUB publicada para o namespace '{namespace}'.")
 
   def get_connection_status(self) -> Dict[str, Any]:
     """Retorna o status atual das conexões ativas."""
-    pass
+    status = {}
+
+    for peer_id, connection in self.active_connections.items():
+      status[peer_id] = {
+        "ip": connection.peer_info.ip,
+        "port": connection.peer_info.port,
+        "name": connection.peer_info.name,
+        "namespace": connection.peer_info.namespace,
+        "is_connected": connection.is_connected(),
+        "last_active": connection.last_active_timestamp,
+      }
+    return status
 
   def get_avg_rtts(self) -> Dict[str, float]:
     """Retorna o RTT médio para cada peer conectado."""
-    pass
+    rtt_data = {}
+
+    for peer_id, connection in self.active_connections.items():
+      rtt_data[peer_id] = connection.get_average_rtt()
+    return rtt_data
 
   def reconnect_peers(self):
     """Força a reconciliação imediata das conexões de peers."""

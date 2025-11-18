@@ -105,4 +105,11 @@ class PeerTableManager:
     """Retorna uma lista de peers que pertencem a um namespace específico."""
     return [peer for peer in self._table.peers.values() if peer.namespace == namespace]
   
+  def get_average_rtt(self, peer_id: str) -> Optional[float]:
+    """Retorna o RTT médio para um peer específico, se disponível."""
+    peer = self.get_peer(peer_id)
+    if not peer or not peer.rtt_samples:
+      return None
+    return sum(peer.rtt_samples) / len(peer.rtt_samples)
+  
 PEER_MANAGER = PeerTableManager()
