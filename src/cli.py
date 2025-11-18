@@ -32,7 +32,10 @@ def start(name, namespace, port, log_level):
     client = P2PClient()
 
     # Inicia o loop assíncrono em uma thread separada
-    asyncio_thread = threading.Thread(target=asyncio.run, args=(client.start(name, namespace, port),), daemon=True)
+    def run_p2p_client():
+        client.start(name, namespace, port)
+
+    asyncio_thread = threading.Thread(target=run_p2p_client, daemon=True)
     asyncio_thread.start()
 
     click.echo("🚀 Cliente P2P iniciado com sucesso! Use '/quit' para sair.")
@@ -40,10 +43,10 @@ def start(name, namespace, port, log_level):
     command_loop(client)
 
 def command_loop(client):
-      """Loop de comandos CLI para interagir com o cliente P2P."""
-      while True:
-          command = input(">> ")
-          handle_client_commands(client, command)
+    """Loop de comandos CLI para interagir com o cliente P2P."""
+    while True:
+        command = input(">> ")
+        handle_client_commands(client, command)
 
 def handle_client_commands(client, raw_command: str):
     """Processa comandos interativos para o cliente P2P."""
@@ -61,8 +64,8 @@ def handle_client_commands(client, raw_command: str):
     elif command == '/peers':
         if len(parts) == 2:
             namespace = parts[1]
-            client.discover_peers(namespace)
             click.echo(f"Descobrindo peers no namespace '{namespace}'...")
+            asyncio.run(client.discover_in_namespace(namespace))
         else:
             click.echo("Uso: /peers [* | #namespace]")
     elif command == '/pub':
@@ -75,7 +78,7 @@ def handle_client_commands(client, raw_command: str):
             click.echo("Uso: /pub * <mensagem> ou /pub #<namespace> <mensagem>")
     elif command == '/conn':
         if len(parts) == 1:
-            connections = client.get_active_connections()
+            connections = client.get_connection_status()
             for conn in connections:
                 click.echo(f"- {conn}")
             click.echo("Listando conexões ativas...")
@@ -83,7 +86,7 @@ def handle_client_commands(client, raw_command: str):
             click.echo("Uso: /conn")
     elif command == '/rtt':
         if len(parts) == 1:
-            rtts = client.get_average_rtts()
+            rtts = client.get_avg_rtts()
             for peer_id, rtt in rtts.items():
                 click.echo(f"- {peer_id}: {rtt} ms")
             click.echo("Exibindo RTT médio por peer...")

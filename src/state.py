@@ -26,7 +26,7 @@ class PeerInfo:
 
     # Gerenciamento de Reconexões
     reconnect_attempts: int = 0
-    next_reconnect_time: Optional[float] = None
+    next_reconnect_time: float = 0.0
 
     def __post_init__(self):
         """Define o peer_id após a inicialização."""
@@ -38,10 +38,6 @@ class LocalPeerState:
     name: str
     namespace: str
     listen_port: int
-
-    # Informações observadas pelo Rendezvous (atualizadas no REGISTER)
-    observed_ip: Optional[str] = None
-    observed_port: Optional[int] = None
 
     peer_id: str = field(init=False)
 

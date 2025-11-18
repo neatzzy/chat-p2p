@@ -75,12 +75,21 @@ class P2PClient:
   async def _run_discovery_and_reconcile(self):
     """Executa a descoberta de peers e reconciliação da tabela de peers."""
     print("[Discovery] Iniciando descoberta de peers...")
-    peers_list = await RENDEZVOUS_CONNECTION.discover(namespace=LOCAL_STATE.namespace)
+    peers_list = await RENDEZVOUS_CONNECTION.discover('*')
 
-    PEER_MANAGER.update_from_discovery(peers_list)
+    PEER_MANAGER.update_from_discover(peers_list)
 
     await self._reconcile_connections()
   
+  async def discover_in_namespace(self, namespace: str):
+    """Descobre peers em um namespace específico e reconcilia conexões."""
+    print(f"[Discovery] Iniciando descoberta de peers no namespace '{namespace}'...")
+    peers_list = await RENDEZVOUS_CONNECTION.discover(namespace)
+
+    PEER_MANAGER.update_from_discover(peers_list)
+
+    await self._reconcile_connections()
+
   async def _reconcile_connections(self):
     """Compara a PEER_TABLE com as conexões ativas e inicia novas conexões seguindo a lógica de backoff."""
     peers_to_connect = PEER_MANAGER.get_peers_to_connect()

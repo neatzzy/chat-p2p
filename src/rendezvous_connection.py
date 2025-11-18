@@ -66,34 +66,30 @@ class RendezvousConnection:
         }
 
         try:
-            response = await self._send_and_receive(message)
-            LOCAL_STATE.observed_ip = response.get("observed_ip")
-            LOCAL_STATE.observed_port = response.get("observed_port")
+            await self._send_and_receive(message)
             
-            print(f"[Rendezvous] Registro OK. IP Observado: {LOCAL_STATE.observed_ip}:{LOCAL_STATE.observed_port}")
+            print(f"[Rendezvous] Registro OK. Peer: {LOCAL_STATE.peer_id}")
             return True
         except RendezvousConnectionError as e:
             print(f"[Rendezvous ERROR] Falha no registro: {str(e)}")
             return False
         
-    async def discover(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def discover(self, namespace) -> List[Dict[str, Any]]:
         """Descobre peers registrados no servidor Rendezvous."""
         message = { "type": "DISCOVER" }
 
-        if namespace: 
+        if namespace == "*":
+            message["namespace"] = ""
+        else:
             message["namespace"] = namespace
-
         try:
             response = await self._send_and_receive(message)
             peers = response.get("peers", [])
-
-            print(f"[Rendezvous] Descobertos {len(peers)} peers.")
-
-            return response.get("peers", [])
+            print(f"[Rendezvous] Descobertos {len(peers)} peers no namespace '{namespace}'.")
+            return peers
         except RendezvousConnectionError as e:
-            print(f"[Rendezvous ERROR] Falha ao descobrir peers: {str(e)}")
+            print(f"[Rendezvous ERROR] Falha na descoberta: {str(e)}")
             return []
-        
     async def unregister(self) -> bool:
         """Remove o registro do peer local do servidor Rendezvous."""
 
