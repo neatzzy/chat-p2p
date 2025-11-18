@@ -69,7 +69,7 @@ class PeerTableManager:
     delay = base_delay * (2 ** (peer.reconnect_attempts - 1))
 
     # Adiciona jitter aleatório
-    jitter = rd.uniform(0, ProtocolConfig.RECONNECT_JITTER_SEC)
+    jitter = rd.uniform(0, delay * ProtocolConfig.RECONNECT_JITTER_FACTOR)
     delay += jitter
 
     peer.next_reconnect_time = time.time() + delay

@@ -62,7 +62,7 @@ class PeerConnection:
 
         # Espera pela resposta HELLO_OK
         try:
-            data = await asyncio.wait_for(self.reader.readuntil(ProtocolConfig.MESSAGE_DELIMITER), timeout=ProtocolConfig.HANDSHAKE_TIMEOUT_SEC)
+            data = await asyncio.wait_for(self.reader.readuntil(ProtocolConfig.MESSAGE_DELIMITER), timeout=5.0)
             message = self._decode_message(data)
 
             if message.get("type") == "HELLO_OK":
@@ -92,7 +92,7 @@ class PeerConnection:
         try:
             if not self.is_active:
                 # Se for uma conexão INBOUND, realiza o handshake
-                await self.do_handshake(is_initiator=False)
+                await self.do_handshake()
                 self.is_active = True
             while self.is_active:
                 data = await asyncio.wait_for(self.reader.readuntil(ProtocolConfig.MESSAGE_DELIMITER), timeout=ProtocolConfig.PING_INTERVAL_SEC * 2)

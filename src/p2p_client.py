@@ -229,8 +229,6 @@ class P2PClient:
     """Define o nível de log para o cliente P2P."""
     pass
 
-P2P_ORCHESTRATOR = P2PClient()
-
 def set_local_identity(name: str, namespace: str, port: int):
   """Define a identidade local do peer."""
   global LOCAL_STATE

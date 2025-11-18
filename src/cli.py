@@ -4,7 +4,7 @@ import asyncio
 import sys 
 import threading
 
-from p2p_client import P2PClient, P2P_ORCHESTRATOR, set_local_identity
+from p2p_client import P2PClient, set_local_identity
 # from main import setup_logging
 
 @click.group()
