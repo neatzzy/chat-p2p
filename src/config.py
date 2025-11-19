@@ -40,7 +40,9 @@ class ProtocolConfig:
     TTL = 1 # Fixo em 1
 
     # Keep-Alive (PING/PONG)
-    PING_INTERVAL_SEC = 30 # Envio de PING a cada 30 segundos
+    PING_INTERVAL_SEC = 30 # Envio de PING a cada 30 segundos 
+    PONG_TIMEOUT_INTERVAL_SEC = 15 # Timeout de PONG após 15 segundos
+    PONG_CHECK_INTERVAL_SEC = 10 # Checa se um PONG chegou a cada 10 segundos
     
     # Timeout para ACK
     ACK_TIMEOUT_SEC = 5 # Mensagens sem ACK após 5s geram aviso de timeout

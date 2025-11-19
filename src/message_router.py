@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 from peer_connection import PeerConnection
+from keep_alive import KeepAliveManager
 from peer_table import PEER_MANAGER
 from state import LOCAL_STATE
 
@@ -18,11 +19,11 @@ class MessageRouter:
     Gerencia as conexões ativas e roteia mensagens entre os peers.
     """
 
-    def __init__(self):
+    def __init__(self, connections: Dict[str, PeerConnection], keep_alive: KeepAliveManager):
         # Mapeia peer_id(str) para sua conexão ativa (PeerConnection)
-        self.connections: Dict[str, PeerConnection] = {}
-        # Rastreamento de estado de protocolo(pings e acks)
-        self.pending_pings: Dict[str, float] = {}
+        self.connections: Dict[str, PeerConnection] = connections
+        # Rastreamento de estado de protocolo(acks)
+        self.keep_alive: KeepAliveManager = keep_alive
         self.pending_acks: Dict[str, asyncio.Task] = {}
         
     def register_connection(self, peer_id: str, connection: PeerConnection):
@@ -86,13 +87,8 @@ class MessageRouter:
             await self.send_pong(connection, msg_id, peer_id)
 
         elif msg_type == "PONG":
-        # Keep-alive(volta)
-            if msg_id in self.pending_pings:
-                start_time = self.pending_pings.pop(msg_id)
-                rtt = time.time() - start_time
-                print(f"[MessageRouter] LOG: PONG recebido de {peer_id}. RTT: {rtt*1000:.2f} ms.")
-            else:
-                print(f"[MessageRouter] PONG inesperado de {peer_id}.")
+        # Keep-alive(volta) 
+            self.keep_alive.handle_incoming_pong(message)
 
         elif msg_type == "BYE":
         # Fim de sessão(ida)
@@ -141,25 +137,6 @@ class MessageRouter:
             "ttl": 1
         }
 
-    async def send_ping(self, target_peer_id: str):
-        # Envia PING 
-        if target_peer_id not in self.connections:
-            return
-
-        connection = self.connections[target_peer_id]
-        msg_id = str(uuid.uuid4())
-
-        message = {
-            "type": "PING",
-            "msg_id": msg_id,
-            "src": LOCAL_STATE.peer_id,
-            "timestamp": self.get_timestamp(),
-            "ttl": 1
-        }
-
-        self.pending_pings[msg_id] = time.time()
-        await connection.send_message(message)
-
     async def send_pong(self, connection: PeerConnection, msg_id: str, target_peer_id: str):
         # Envia PONG
         message = {
@@ -171,9 +148,3 @@ class MessageRouter:
             "ttl": 1
         }
         await connection.send_message(message)
-
-    
-    
-
-# Instância
-MESSAGE_ROUTER = MessageRouter()

@@ -10,7 +10,8 @@ from state import LOCAL_STATE, PeerInfo
 from peer_table import PEER_MANAGER
 from rendezvous_connection import RENDEZVOUS_CONNECTION
 from peer_connection import create_outbound_connection, PeerConnection
-from message_router import MESSAGE_ROUTER
+from keep_alive import KeepAliveManager
+from message_router import MessageRouter
 
 class P2PClient:
   """Orquestrador central do cliente P2P. Gerencia o ciclo de vida da aplicação, tarefas periódicas e reconciliação da rede."""
@@ -19,6 +20,8 @@ class P2PClient:
     self._listener_task: Optional[asyncio.Task] = None
     self._periodic_tasks: Dict[str, asyncio.Task] = {} 
     self.active_connections: Dict[str, PeerConnection] = {}
+    self.keep_alive: KeepAliveManager = KeepAliveManager(self.active_connections)
+    self.router: MessageRouter = MessageRouter(self.active_connections, self.keep_alive)
       
   # Ciclo de vida e inicialização
 
@@ -40,6 +43,7 @@ class P2PClient:
     self._listener_task = asyncio.create_task(self._start_listening_server())
     self._periodic_tasks['register'] = asyncio.create_task(self._periodic_task_runner(self._refresh_register, RendezvousConfig.REGISTER_REFRESH_INTERVAL_SEC))
     self._periodic_tasks['discover'] = asyncio.create_task(self._periodic_task_runner(self._run_discovery_and_reconcile, RendezvousConfig.DISCOVER_INTERVAL_SEC))
+    self._periodic_tasks['keep_alive'] = asyncio.create_task(self.keep_alive.start())
 
     await asyncio.gather(*self._periodic_tasks.values(), return_exceptions=True)
 
@@ -195,7 +199,7 @@ class P2PClient:
       "require_ack": False,
       "ttl": ProtocolConfig.TTL}
     
-    # MESSAGE_ROUTER.handle_outbound_pub(pub_message, self.active_connections)
+    self.router.handle_outbound_pub(pub_message, self.active_connections)
     print(f"[Client] Mensagem PUB publicada para o namespace '{namespace}'.")
 
   def get_connection_status(self) -> Dict[str, Any]:

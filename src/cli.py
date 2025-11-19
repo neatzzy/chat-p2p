@@ -34,7 +34,7 @@ def start(name, namespace, port, log_level):
     # Inicia o loop assíncrono em uma thread separada
     def run_p2p_client():
         client.start(name, namespace, port)
-
+        
     asyncio_thread = threading.Thread(target=run_p2p_client, daemon=True)
     asyncio_thread.start()
 
