@@ -1,3 +1,5 @@
+[![CI](https://github.com/neatzzy/chat-p2p/actions/workflows/ci.yml/badge.svg)](https://github.com/neatzzy/chat-p2p/actions/workflows/ci.yml)
+
 # 🐍 PyP2p: Cliente de Chat Peer-to-Peer
 
 ## 📖 Visão Geral do Projeto
@@ -73,6 +75,7 @@ O projeto segue um modelo de arquitetura modular, onde cada arquivo Python tem u
 # Exemplo
 $ python3 main.py --name alice --namespace CIC --port 7070
 ```
+
 ## Roteiro
 
 https://github.com/mfcaetano/pyp2p-rdv
