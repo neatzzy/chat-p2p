@@ -9,11 +9,16 @@ dill==0.4.0
 dotenv==0.9.9
 frozenlist==1.8.0
 idna==3.11
+iniconfig==2.3.0
 isort==7.0.0
 mccabe==0.7.0
 multidict==6.7.0
+packaging==25.0
 platformdirs==4.5.0
+pluggy==1.6.0
 propcache==0.4.1
+pytest==7.4.0
+pytest-asyncio==0.22.0
 python-dotenv==1.2.1
 tomlkit==0.13.3
 websockets==15.0.1
