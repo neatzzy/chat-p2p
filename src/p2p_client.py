@@ -2,27 +2,32 @@
 import asyncio
 import time
 import uuid
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 
 # Importações internas
 from config import ProtocolConfig, RendezvousConfig
 from state import LOCAL_STATE, PeerInfo
 from peer_table import PEER_MANAGER
 from rendezvous_connection import RENDEZVOUS_CONNECTION
-from peer_connection import create_outbound_connection, PeerConnection
-from keep_alive import KeepAliveManager
-from message_router import MessageRouter
+if TYPE_CHECKING:
+  from peer_connection import PeerConnection
+  from keep_alive import KeepAliveManager
+  from message_router import MessageRouter
 
 class P2PClient:
   """Orquestrador central do cliente P2P. Gerencia o ciclo de vida da aplicação, tarefas periódicas e reconciliação da rede."""
   def __init__(self):
     self._is_running = False
     self._listener_task: Optional[asyncio.Task] = None
-    self._periodic_tasks: Dict[str, asyncio.Task] = {} 
-    self.active_connections: Dict[str, PeerConnection] = {}
-    self.keep_alive: KeepAliveManager = KeepAliveManager(self.active_connections)
-    self.router: MessageRouter = MessageRouter(self.active_connections, self.keep_alive)
-      
+    self._periodic_tasks: Dict[str, asyncio.Task] = {}
+    self.active_connections: Dict[str, "PeerConnection"] = {}
+
+    # Lazy import and wiring to avoid circular imports during module import
+    from keep_alive import KeepAliveManager
+    from message_router import MessageRouter
+
+    self.keep_alive = KeepAliveManager(self.active_connections)
+    self.router = MessageRouter(self.active_connections, self.keep_alive)
   # Ciclo de vida e inicialização
 
   def start(self, name: str, namespace: str, port: int):
@@ -107,9 +112,17 @@ class P2PClient:
       if peer_info.peer_id not in self.active_connections and peer_info.peer_id != LOCAL_STATE.peer_id:
         print(f"[Reconcile] Tentando conectar a {peer_info.peer_id}...")
 
+        # Import lazily to avoid circular import at module load time
+        from peer_connection import create_outbound_connection
+
         new_conn = await create_outbound_connection(peer_info)
 
         if new_conn:
+          # Wire router to the new connection so it can forward incoming messages
+          try:
+            new_conn.router = self.router
+          except Exception:
+            pass
           self.active_connections[peer_info.peer_id] = new_conn
           PEER_MANAGER.register_successful_connection(peer_info.peer_id)
         else:
@@ -147,8 +160,16 @@ class P2PClient:
 
     print(f"[PeerServer] Conexão INBOUND recebida de {temp_peer_id}. Iniciando handshake...")
 
+    # Import PeerConnection lazily to avoid circular import at module load time
+    from peer_connection import PeerConnection
+
     connection = PeerConnection(temp_peer_info, reader, writer)
     if await connection.do_handshake(is_initiator=False):
+      # Wire router so incoming messages are routed
+      try:
+        connection.router = self.router
+      except Exception:
+        pass
       self.active_connections[connection.peer_info.peer_id] = connection
       PEER_MANAGER.register_successful_connection(connection.peer_info.peer_id)
       asyncio.create_task(connection.run_listener())
@@ -189,8 +210,20 @@ class P2PClient:
       "require_ack": True,
       "ttl": ProtocolConfig.TTL}
     
-    # PeerConnection lida com o envio real
-    asyncio.create_task(conn.send_message(message))
+    # PeerConnection lida com o envio real — agendar na event loop do orquestrador
+    try:
+      loop = self.get_event_loop()
+    except Exception:
+      loop = None
+
+    if loop:
+      asyncio.run_coroutine_threadsafe(conn.send_message(message), loop)
+    else:
+      # fallback: try to create a task in current loop (may raise if no loop)
+      try:
+        asyncio.create_task(conn.send_message(message))
+      except RuntimeError:
+        print("[Client ERROR] Nenhum event loop disponível para enviar a mensagem.")
     print(f"[Client] Mensagem SEND enviada para {dst_peer_id}.")
 
   def publish_message(self, namespace: str, message: str):
@@ -204,7 +237,19 @@ class P2PClient:
       "require_ack": False,
       "ttl": ProtocolConfig.TTL}
     
-    self.router.handle_outbound_pub(pub_message, self.active_connections)
+    # Schedule outbound publish on the orchestrator's event loop
+    try:
+      loop = self.get_event_loop()
+    except Exception:
+      loop = None
+
+    if loop:
+      asyncio.run_coroutine_threadsafe(self.router.handle_outbound_pub(pub_message, self.active_connections), loop)
+    else:
+      try:
+        asyncio.create_task(self.router.handle_outbound_pub(pub_message, self.active_connections))
+      except RuntimeError:
+        print("[Client ERROR] Nenhum event loop disponível para publicar a mensagem.")
     print(f"[Client] Mensagem PUB publicada para o namespace '{namespace}'.")
 
   def get_connection_status(self) -> Dict[str, Any]:

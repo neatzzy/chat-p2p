@@ -3,13 +3,14 @@
 import asyncio
 import time
 import uuid
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 
 
 # Importações internas
 from config import ProtocolConfig
 from state import LOCAL_STATE
-from peer_connection import PeerConnection
+if TYPE_CHECKING:
+  from peer_connection import PeerConnection
 
 class KeepAliveManager:
   """Gerenciador principal da lógica de PING/PONG."""

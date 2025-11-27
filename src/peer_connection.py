@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional, TYPE_CHECKING
 from config import ProtocolConfig
 from state import PeerInfo, LOCAL_STATE
 from peer_table import PEER_MANAGER
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from message_router import MessageRouter
 
@@ -17,7 +18,11 @@ class PeerConnection:
         self.reader = reader
         self.writer = writer
         self.is_active = False
-        self.router: MessageRouter = MessageRouter()
+        # Router will be wired by the orchestrator (P2PClient) to avoid circular imports
+        self.router: "MessageRouter" | None = None
+        # Tracking timestamps and RTT samples for simple metrics
+        self.last_active_timestamp: float | None = None
+        self._rtt_samples: list[float] = []
 
   # Utilitários de codificação e envio de Mensagens
 
@@ -89,11 +94,17 @@ class PeerConnection:
                 print(f"[Handshake ERROR] peer_id ausente na mensagem")
                 return False
             
+            # Store remote peer_id for both initiator and responder flows
+            self.peer_info.peer_id = remote_peer_id
+
             if not is_initiator:
-                name, namespace = remote_peer_id.split("@")
-                self.peer_info.name = name
-                self.peer_info.namespace = namespace
-                self.peer_info.peer_id = remote_peer_id
+                # For inbound connections, also update name/namespace from peer_id
+                try:
+                    name, namespace = remote_peer_id.split("@")
+                    self.peer_info.name = name
+                    self.peer_info.namespace = namespace
+                except Exception:
+                    pass
 
                 hello_ok_msg = {
                     "type": "HELLO_OK",
@@ -130,9 +141,14 @@ class PeerConnection:
                 data = await asyncio.wait_for(self.reader.readuntil(ProtocolConfig.MESSAGE_DELIMITER), timeout=ProtocolConfig.PING_INTERVAL_SEC * 2)
 
                 message = self._decode_message(data)
+                # Atualiza timestamp de atividade
+                self.last_active_timestamp = time.time()
 
-                # Encaminha a mensagem para o roteador de mensagens
-                self.router.handle_incoming_message(self, message)
+                # Encaminha a mensagem para o roteador de mensagens (se estiver ligado)
+                if self.router:
+                    await self.router.handle_incoming_message(self, message)
+                else:
+                    print(f"[PeerConnection] Sem router para processar mensagem de {self.peer_info.peer_id}: {message}")
                 print(f"[PeerConnection] Mensagem recebida do peer {self.peer_info.peer_id}: {message}")
         except asyncio.TimeoutError:
             print(f"[PeerConnection] Timeout ao ler do peer {self.peer_info.peer_id}")
@@ -155,6 +171,39 @@ class PeerConnection:
         if self.writer:
             self.writer.close()
             await self.writer.wait_closed()
+
+    async def send_bye_and_close(self):
+        """Envia BYE para o peer e fecha a conexão."""
+        try:
+            msg_id = str(uuid.uuid4())
+            message = {
+                "type": "BYE",
+                "msg_id": msg_id,
+                "src": LOCAL_STATE.peer_id,
+                "dst": self.peer_info.peer_id,
+                "reason": "shutdown",
+                "timestamp": time.time(),
+                "ttl": 1,
+            }
+            await self.send_message(message)
+        except Exception as e:
+            print(f"[PeerConnection] Erro ao enviar BYE para {self.peer_info.peer_id}: {e}")
+        finally:
+            await self.close()
+
+    def is_connected(self) -> bool:
+        """Retorna se a conexão está ativa."""
+        return self.is_active
+
+    def add_rtt_sample(self, rtt: float) -> None:
+        """Adiciona uma amostra RTT para cálculo médio."""
+        self._rtt_samples.append(rtt)
+
+    def get_average_rtt(self) -> float:
+        """Retorna o RTT médio (ms) para este peer. 0.0 se não houver amostras."""
+        if not self._rtt_samples:
+            return 0.0
+        return sum(self._rtt_samples) / len(self._rtt_samples) * 1000.0
     
     # Iniciar conexãoes OUTBOUND
 
