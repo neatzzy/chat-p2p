@@ -43,7 +43,7 @@ class P2PClient:
     self._listener_task = asyncio.create_task(self._start_listening_server())
     self._periodic_tasks['register'] = asyncio.create_task(self._periodic_task_runner(self._refresh_register, RendezvousConfig.REGISTER_REFRESH_INTERVAL_SEC))
     self._periodic_tasks['discover'] = asyncio.create_task(self._periodic_task_runner(self._run_discovery_and_reconcile, RendezvousConfig.DISCOVER_INTERVAL_SEC))
-    self._periodic_tasks['keep_alive'] = asyncio.create_task(self.keep_alive.start())
+    self._periodic_tasks['keep_alive'] = asyncio.create_task(self._periodic_task_runner(self.keep_alive.send_ping, ProtocolConfig.PING_INTERVAL_SEC))
 
     await asyncio.gather(*self._periodic_tasks.values(), return_exceptions=True)
 

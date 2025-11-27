@@ -5,13 +5,11 @@ import time
 import uuid
 from typing import Optional, Dict, Any
 
+
 # Importações internas
-from config import ProtocolConfig, RendezvousConfig
-from state import LOCAL_STATE, PeerInfo
-from peer_table import PEER_MANAGER
-from rendezvous_connection import RENDEZVOUS_CONNECTION
-from peer_connection import create_outbound_connection, PeerConnection
-from message_router import MessageRouter
+from config import ProtocolConfig
+from state import LOCAL_STATE
+from peer_connection import PeerConnection
 
 class KeepAliveManager:
   """Gerenciador principal da lógica de PING/PONG."""
