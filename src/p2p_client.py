@@ -37,9 +37,14 @@ class P2PClient:
       print("Interrupção pelo usuário recebida. Encerrando...")
       self.stop()
 
+  def get_event_loop(self) -> asyncio.AbstractEventLoop:
+    """Retorna o event loop ativo."""
+    return self._loop
+
 
   async def _run_async(self):
     """Função assíncrona que gerencia o agendamento de tarefas."""
+    self._loop = asyncio.get_event_loop()
     self._listener_task = asyncio.create_task(self._start_listening_server())
     self._periodic_tasks['register'] = asyncio.create_task(self._periodic_task_runner(self._refresh_register, RendezvousConfig.REGISTER_REFRESH_INTERVAL_SEC))
     self._periodic_tasks['discover'] = asyncio.create_task(self._periodic_task_runner(self._run_discovery_and_reconcile, RendezvousConfig.DISCOVER_INTERVAL_SEC))
@@ -99,7 +104,7 @@ class P2PClient:
     peers_to_connect = PEER_MANAGER.get_peers_to_connect()
 
     for peer_info in peers_to_connect:
-      if peer_info.peer_id not in self.active_connections:
+      if peer_info.peer_id not in self.active_connections and peer_info.peer_id != LOCAL_STATE.peer_id:
         print(f"[Reconcile] Tentando conectar a {peer_info.peer_id}...")
 
         new_conn = await create_outbound_connection(peer_info)
@@ -239,4 +244,4 @@ def set_local_identity(name: str, namespace: str, port: int):
   LOCAL_STATE.name = name
   LOCAL_STATE.namespace = namespace
   LOCAL_STATE.listen_port = port
-  LOCAL_STATE.peer_id = f"{name}@{namespace}:{port}"
+  LOCAL_STATE.peer_id = f"{name}@{namespace}"
