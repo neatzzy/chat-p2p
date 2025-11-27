@@ -148,7 +148,7 @@ class P2PClient:
     print(f"[PeerServer] Conexão INBOUND recebida de {temp_peer_id}. Iniciando handshake...")
 
     connection = PeerConnection(temp_peer_info, reader, writer)
-    if await connection.do_handshake():
+    if await connection.do_handshake(is_initiator=False):
       self.active_connections[connection.peer_info.peer_id] = connection
       PEER_MANAGER.register_successful_connection(connection.peer_info.peer_id)
       asyncio.create_task(connection.run_listener())
