@@ -54,6 +54,9 @@ class ProtocolConfig:
     RECONNECT_BASE_DELAY_SEC = 2
     RECONNECT_JITTER_FACTOR = 0.5
 
+    # Timeout de conexão TCP
+    HANDSHAKE_TIMEOUT_SEC = 10 # Timeout para completar o handshake HELLO/HELLO_OK
+
 
 # --- Configurações da Interface de Usuário (CLI) ---
 

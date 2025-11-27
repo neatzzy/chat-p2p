@@ -57,28 +57,63 @@ class PeerConnection:
         }
         await self.send_message(hello_msg)
 
-    async def do_handshake(self):
-        """Realiza o handshake inicial com o peer."""
-        await self._send_hello()
-
-        # Espera pela resposta HELLO_OK
+    async def do_handshake(self, is_initiator: bool) -> bool:
+        """
+        Realiza o Handshake HELLO/HELLO_OK, suportando fluxos Inbound e Outbound.
+        
+        Args:
+            is_initiator: True se somos o peer que iniciou a conexão TCP (Outbound), False se recebemos a conexão (Inbound).
+        """
         try:
-            data = await asyncio.wait_for(self.reader.readuntil(ProtocolConfig.MESSAGE_DELIMITER), timeout=5.0)
+            if is_initiator:
+                await self._send_hello()
+                expeted_type = "HELLO_OK"
+                flow_type = "OUTBOUND"
+            else:
+                expeted_type = "HELLO"
+                flow_type = "INBOUND"
+
+            print(f"[Handshake] {flow_type} iniciado com {self.peer_info.peer_id}")
+
+            data = await asyncio.wait_for(self.reader.readuntil(ProtocolConfig.MESSAGE_DELIMITER), timeout=ProtocolConfig.HANDSHAKE_TIMEOUT_SEC)
+
             message = self._decode_message(data)
 
-            if message.get("type") == "HELLO_OK":
-                print(f"[PeerConnection] Handshake bem-sucedido com o peer {self.peer_info.peer_id}")
-                self.peer_info.is_connected = True
-                self.peer_info.last_seen = time.time()
-                return True
-            else:
-                print(f"[PeerConnection] Resposta inesperada durante o handshake com {self.peer_info.peer_id}: {message}")
+            if message.get("type") != expeted_type:
+                print(f"[Handshake ERROR] Esperado {expeted_type}, recebido {message.get('type')}")
                 return False
+            
+            remote_peer_id = message.get("peer_id")
+
+            if not remote_peer_id:
+                print(f"[Handshake ERROR] peer_id ausente na mensagem")
+                return False
+            
+            if not is_initiator:
+                name, namespace = remote_peer_id.split("@")
+                self.peer_info.name = name
+                self.peer_info.namespace = namespace
+                self.peer_info.peer_id = remote_peer_id
+
+                hello_ok_msg = {
+                    "type": "HELLO_OK",
+                    "peer_id": LOCAL_STATE.peer_id,
+                    "version": "1.0",
+                    "features": ["ack", "metrics"],
+                    "ttl": ProtocolConfig.TTL
+                }
+                await self.send_message(hello_ok_msg)
+
+            self.is_active = True
+            self.peer_info.is_connected = True
+            print(f"[Handshake SUCCESS] Conexão {flow_type} estabelecida com {self.peer_info.peer_id}")
+            return True
+        
         except asyncio.TimeoutError:
-            print(f"[PeerConnection] Timeout durante o handshake com o peer {self.peer_info.peer_id}")
+            print(f"[Handshake ERROR] Timeout durante o Handshake com {self.peer_info.peer_id}")
             return False
         except Exception as e:
-            print(f"[PeerConnection] Erro durante o handshake com o peer {self.peer_info.peer_id}: {e}")
+            print(f"[Handshake ERROR] Erro inesperado durante o Handshake com {self.peer_info.peer_id}: {e}")
             return False
 
     # Ouvinte de conexão e loop principal
@@ -91,10 +126,6 @@ class PeerConnection:
             return
         
         try:
-            if not self.is_active:
-                # Se for uma conexão INBOUND, realiza o handshake
-                await self.do_handshake()
-                self.is_active = True
             while self.is_active:
                 data = await asyncio.wait_for(self.reader.readuntil(ProtocolConfig.MESSAGE_DELIMITER), timeout=ProtocolConfig.PING_INTERVAL_SEC * 2)
 
@@ -134,7 +165,7 @@ async def create_outbound_connection(peer_info: PeerInfo) -> Optional['PeerConne
 
             connection = PeerConnection(peer_info, reader, writer)
 
-            if await connection.do_handshake():
+            if await connection.do_handshake(is_initiator=True):
                 asyncio.create_task(connection.run_listener())
                 return connection
             
