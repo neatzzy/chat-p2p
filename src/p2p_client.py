@@ -23,7 +23,7 @@ class P2PClient:
     self._periodic_tasks: Dict[str, asyncio.Task] = {}
     self.active_connections: Dict[str, "PeerConnection"] = {}
 
-    # Lazy import and wiring to avoid circular imports during module import
+    # Importações adiadas e configuração para evitar importações circulares durante o carregamento do módulo
     from keep_alive import KeepAliveManager
     from message_router import MessageRouter
 
@@ -113,13 +113,13 @@ class P2PClient:
       if peer_info.peer_id not in self.active_connections and peer_info.peer_id != LOCAL_STATE.peer_id:
         logging.getLogger(__name__).info(f"[Reconcile] Tentando conectar a {peer_info.peer_id}...")
 
-        # Import lazily to avoid circular import at module load time
+        # Importação adiada para evitar importação circular em tempo de carregamento do módulo
         from peer_connection import create_outbound_connection
 
         new_conn = await create_outbound_connection(peer_info)
 
         if new_conn:
-          # Wire router to the new connection so it can forward incoming messages
+          # Vincula o roteador à nova conexão para encaminhar mensagens recebidas
           try:
             new_conn.router = self.router
           except Exception:
@@ -161,12 +161,12 @@ class P2PClient:
 
     logging.getLogger(__name__).info(f"[PeerServer] Conexão INBOUND recebida de {temp_peer_id}. Iniciando handshake...")
 
-    # Import PeerConnection lazily to avoid circular import at module load time
+    # Importação de PeerConnection adiada para evitar importação circular em tempo de carga
     from peer_connection import PeerConnection
 
     connection = PeerConnection(temp_peer_info, reader, writer)
     if await connection.do_handshake(is_initiator=False):
-      # Wire router so incoming messages are routed
+      # Vincula o roteador para que mensagens recebidas sejam roteadas
       try:
         connection.router = self.router
       except Exception:
@@ -220,7 +220,7 @@ class P2PClient:
     if loop:
       asyncio.run_coroutine_threadsafe(conn.send_message(message), loop)
     else:
-      # fallback: try to create a task in current loop (may raise if no loop)
+      # fallback: tentar criar uma tarefa no loop atual (pode lançar se não houver loop)
       try:
         asyncio.create_task(conn.send_message(message))
       except RuntimeError:
@@ -238,7 +238,7 @@ class P2PClient:
       "require_ack": False,
       "ttl": ProtocolConfig.TTL}
     
-    # Schedule outbound publish on the orchestrator's event loop
+    # Agenda a publicação de saída no event loop do orquestrador
     try:
       loop = self.get_event_loop()
     except Exception:

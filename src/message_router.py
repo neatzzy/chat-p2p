@@ -54,17 +54,29 @@ class MessageRouter:
         # Processas uma mensagem recebida de um PeerConnection
         msg_type = message.get("type")
         peer_id = message.get("src")
+        # Se a mensagem recebida não contiver `src` (alguns peers podem omitir),
+        # tenta-se obter o ID a partir de `connection.peer_info` quando possível e
+        # garante-se que `message['src']` esteja presente para que componentes
+        # posteriores (ex.: KeepAlive) possam utilizá-lo.
+        if not peer_id and connection is not None and hasattr(connection, 'peer_info'):
+            try:
+                inferred = getattr(connection.peer_info, 'peer_id', None)
+                if inferred:
+                    peer_id = inferred
+                    message.setdefault('src', peer_id)
+            except Exception:
+                pass
         msg_id = message.get("msg_id")
 
-        # TTL enforcement: drop messages with ttl <= 0
+        # Aplicação de TTL: descarta mensagens com ttl <= 0
         try:
             ttl = int(message.get("ttl", 1))
         except Exception:
             ttl = 1
         if ttl <= 0:
-            logging.getLogger(__name__).debug(f"[MessageRouter] Dropping message with ttl<=0 from {peer_id}: {msg_type} ({msg_id})")
+            logging.getLogger(__name__).debug(f"[MessageRouter] Mensagem descartada por ttl<=0 de {peer_id}: {msg_type} ({msg_id})")
             return
-        # decrement ttl for forwarding (if applicable)
+        # decrementa o ttl para reencaminhamento (se aplicável)
         message["ttl"] = ttl - 1
 
         if peer_id:
@@ -79,7 +91,7 @@ class MessageRouter:
             # Mensagem para usuário: mostrar em stdout
             print(f"\n[Mensagem de {peer_id}]: {payload}\n> ", end="")
             if message.get("require_ack"):
-                # reply ACK to sender using same msg_id as reference
+                # responde com ACK ao remetente usando o mesmo msg_id como referência
                 logging.getLogger(__name__).debug(f"[MessageRouter] Enviando ACK para {peer_id} (ref: {msg_id}).")
                 await self.send_ack(connection, msg_id, peer_id)
 
@@ -88,7 +100,7 @@ class MessageRouter:
             logging.getLogger(__name__).debug(f"[MessageRouter] ACK recebido de {peer_id} (ref: {msg_id}).")
             if msg_id in self.pending_acks:
                 task = self.pending_acks[msg_id]
-                # cancel the timeout task and remove pending ack
+                # cancela a tarefa de timeout e remove o ACK pendente
                 try:
                     task.cancel()
                 except Exception:
@@ -141,8 +153,8 @@ class MessageRouter:
             logging.getLogger(__name__).warning(f"[MessageRouter] Tipo de mensagem desconhecido de {peer_id}: {msg_type}")
 
     def get_timestamp(self) -> str:
-        # Retorna timestamp UTC ISO 8601.
-        return datetime.now(timezone.utc).isoformat()
+        # Retorna timestamp em segundos epoch (float) para facilitar cálculo de RTT
+        return time.time()
 
     async def handle_ack_timeout(self, msg_id: str, peer_id: str):
         # Mensagens sem ACK após ACK_TIMEOUT_SEC geram aviso de timeout no log.

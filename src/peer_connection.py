@@ -20,9 +20,9 @@ class PeerConnection:
         self.reader = reader
         self.writer = writer
         self.is_active = False
-        # Router will be wired by the orchestrator (P2PClient) to avoid circular imports
+        # O roteador será ligado pelo orquestrador (P2PClient) para evitar importações circulares
         self.router: "MessageRouter" | None = None
-        # Tracking timestamps and RTT samples for simple metrics
+        # Rastreia timestamps e amostras de RTT para métricas simples
         self.last_active_timestamp: float | None = None
         self._rtt_samples: list[float] = []
 
@@ -70,7 +70,7 @@ class PeerConnection:
         """
         Realiza o Handshake HELLO/HELLO_OK, suportando fluxos Inbound e Outbound.
         
-        Args:
+        Argumentos:
             is_initiator: True se somos o peer que iniciou a conexão TCP (Outbound), False se recebemos a conexão (Inbound).
         """
         try:

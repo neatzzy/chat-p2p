@@ -114,5 +114,5 @@ class RendezvousConnection:
             logging.getLogger(__name__).error(f"[Rendezvous ERROR] Falha ao desregistrar: {str(e)}")
             return False
         
-# Instance global para uso na aplicação
+# Instância global para uso na aplicação
 RENDEZVOUS_CONNECTION = RendezvousConnection()
