@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 # --- Configurações de Ambiente ---
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / '.env'
+LOG_FILE = BASE_DIR / 'p2p_client.log'
 load_dotenv(dotenv_path=ENV_PATH)
 
 # --- Carrega variáveis de ambiente ---

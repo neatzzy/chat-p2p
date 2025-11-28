@@ -9,6 +9,7 @@ from config import ProtocolConfig, RendezvousConfig
 from state import LOCAL_STATE, PeerInfo
 from peer_table import PEER_MANAGER
 from rendezvous_connection import RENDEZVOUS_CONNECTION
+import logging
 if TYPE_CHECKING:
   from peer_connection import PeerConnection
   from keep_alive import KeepAliveManager
@@ -33,13 +34,13 @@ class P2PClient:
   def start(self, name: str, namespace: str, port: int):
     """Inicia o cliente P2P."""
     set_local_identity(name, namespace, port)
-    print(f"Orquestrador iniciado para {LOCAL_STATE.peer_id}")
+    logging.getLogger(__name__).info(f"Orquestrador iniciado para {LOCAL_STATE.peer_id}")
 
     self._is_running = True
     try:
       asyncio.run(self._run_async())
     except KeyboardInterrupt:
-      print("Interrupção pelo usuário recebida. Encerrando...")
+      logging.getLogger(__name__).info("Interrupção pelo usuário recebida. Encerrando...")
       self.stop()
 
   def get_event_loop(self) -> asyncio.AbstractEventLoop:
@@ -61,7 +62,7 @@ class P2PClient:
     """Encerra o cliente de forma limpa: unregister, BYE/BYE_OK, e cancela tarefas."""
     self._is_running = False
 
-    print("Encerrando cliente P2P...")
+    logging.getLogger(__name__).info("Encerrando cliente P2P...")
 
     await RENDEZVOUS_CONNECTION.unregister()
 
@@ -72,7 +73,7 @@ class P2PClient:
     if self._listener_task:
       self._listener_task.cancel()
 
-    print("Cliente P2P encerrado.")
+    logging.getLogger(__name__).info("Cliente P2P encerrado.")
 
   # Tarefas periódicas
 
@@ -88,7 +89,7 @@ class P2PClient:
 
   async def _run_discovery_and_reconcile(self):
     """Executa a descoberta de peers e reconciliação da tabela de peers."""
-    print("[Discovery] Iniciando descoberta de peers...")
+    logging.getLogger(__name__).debug("[Discovery] Iniciando descoberta de peers...")
     peers_list = await RENDEZVOUS_CONNECTION.discover('*')
 
     PEER_MANAGER.update_from_discover(peers_list)
@@ -97,7 +98,7 @@ class P2PClient:
   
   async def discover_in_namespace(self, namespace: str):
     """Descobre peers em um namespace específico e reconcilia conexões."""
-    print(f"[Discovery] Iniciando descoberta de peers no namespace '{namespace}'...")
+    logging.getLogger(__name__).debug(f"[Discovery] Iniciando descoberta de peers no namespace '{namespace}'...")
     peers_list = await RENDEZVOUS_CONNECTION.discover(namespace)
 
     PEER_MANAGER.update_from_discover(peers_list)
@@ -110,7 +111,7 @@ class P2PClient:
 
     for peer_info in peers_to_connect:
       if peer_info.peer_id not in self.active_connections and peer_info.peer_id != LOCAL_STATE.peer_id:
-        print(f"[Reconcile] Tentando conectar a {peer_info.peer_id}...")
+        logging.getLogger(__name__).info(f"[Reconcile] Tentando conectar a {peer_info.peer_id}...")
 
         # Import lazily to avoid circular import at module load time
         from peer_connection import create_outbound_connection
@@ -138,12 +139,12 @@ class P2PClient:
       LOCAL_STATE.listen_port
       )
       addr = server.sockets[0].getsockname()
-      print(f"[PeerServer] Escutando conexões INBOUND em {addr}")
+      logging.getLogger(__name__).info(f"[PeerServer] Escutando conexões INBOUND em {addr}")
 
       async with server:
         await server.serve_forever()
     except OSError as e:
-      print(f"[PeerServer ERROR] Falha ao iniciar o servidor na porta {LOCAL_STATE.listen_port}: {e}")
+      logging.getLogger(__name__).error(f"[PeerServer ERROR] Falha ao iniciar o servidor na porta {LOCAL_STATE.listen_port}: {e}")
       self.stop()
 
   async def _handle_inbound_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -158,7 +159,7 @@ class P2PClient:
       namespace="inbound",
     )
 
-    print(f"[PeerServer] Conexão INBOUND recebida de {temp_peer_id}. Iniciando handshake...")
+    logging.getLogger(__name__).info(f"[PeerServer] Conexão INBOUND recebida de {temp_peer_id}. Iniciando handshake...")
 
     # Import PeerConnection lazily to avoid circular import at module load time
     from peer_connection import PeerConnection
@@ -178,14 +179,14 @@ class P2PClient:
 
   async def _send_bye_and_close_connections(self):
     """Envia BYE para todas as conexões ativas e fecha-as."""
-    print("Enviando BYE para todas as conexões ativas...")
+    logging.getLogger(__name__).info("Enviando BYE para todas as conexões ativas...")
     close_tasks = []
     for peer_id, connection in self.active_connections.items():
-      print(f"Enviando BYE para {peer_id}...")
+      logging.getLogger(__name__).debug(f"Enviando BYE para {peer_id}...")
       close_tasks.append(connection.send_bye_and_close())
     await asyncio.gather(*close_tasks)
     self.active_connections.clear()
-    print("Todas as conexões foram encerradas.")
+    logging.getLogger(__name__).info("Todas as conexões foram encerradas.")
   
   # Funcões para a CLI
 
@@ -198,7 +199,7 @@ class P2PClient:
     conn = self.active_connections.get(dst_peer_id)
 
     if not conn:
-      print(f"[Client ERROR] Conexão para peer_id {dst_peer_id} não encontrada.")
+      logging.getLogger(__name__).warning(f"[Client ERROR] Conexão para peer_id {dst_peer_id} não encontrada.")
       return
     
     message = {
@@ -223,8 +224,8 @@ class P2PClient:
       try:
         asyncio.create_task(conn.send_message(message))
       except RuntimeError:
-        print("[Client ERROR] Nenhum event loop disponível para enviar a mensagem.")
-    print(f"[Client] Mensagem SEND enviada para {dst_peer_id}.")
+        logging.getLogger(__name__).warning("[Client ERROR] Nenhum event loop disponível para enviar a mensagem.")
+    logging.getLogger(__name__).info(f"[Client] Mensagem SEND enviada para {dst_peer_id}.")
 
   def publish_message(self, namespace: str, message: str):
     """Publica uma mensagem em um namespace ou globalmente."""
@@ -249,8 +250,8 @@ class P2PClient:
       try:
         asyncio.create_task(self.router.handle_outbound_pub(pub_message, self.active_connections))
       except RuntimeError:
-        print("[Client ERROR] Nenhum event loop disponível para publicar a mensagem.")
-    print(f"[Client] Mensagem PUB publicada para o namespace '{namespace}'.")
+        logging.getLogger(__name__).warning("[Client ERROR] Nenhum event loop disponível para publicar a mensagem.")
+    logging.getLogger(__name__).info(f"[Client] Mensagem PUB publicada para o namespace '{namespace}'.")
 
   def get_connection_status(self) -> Dict[str, Any]:
     """Retorna o status atual das conexões ativas."""
@@ -277,11 +278,14 @@ class P2PClient:
 
   def reconnect_peers(self):
     """Força a reconciliação imediata das conexões de peers."""
-    pass
+    asyncio.run_coroutine_threadsafe(self._reconcile_connections(), self.get_event_loop())
 
   def set_log_level(self, level: str):
     """Define o nível de log para o cliente P2P."""
-    pass
+    numeric_level = getattr(logging, level.upper(), None)
+    if not isinstance(numeric_level, int):
+      raise ValueError(f'Invalid log level: {level}')
+    logging.getLogger().setLevel(numeric_level)
 
 def set_local_identity(name: str, namespace: str, port: int):
   """Define a identidade local do peer."""

@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, TYPE_CHECKING
 
+import logging
 from config import ProtocolConfig
 from peer_table import PEER_MANAGER
 from state import LOCAL_STATE
@@ -44,7 +45,7 @@ class MessageRouter:
         for msg_id in acks_to_remove:
             self.pending_acks[msg_id].cancel()
             del self.pending_acks[msg_id]
-            print(f"[Router] ACK pendente {msg_id} para {peer_id} cancelado.")
+            logging.getLogger(__name__).debug(f"[Router] ACK pendente {msg_id} para {peer_id} cancelado.")
         # Informa PEER_MANAGER
         PEER_MANAGER.register_disconnection(peer_id)
 
@@ -61,7 +62,7 @@ class MessageRouter:
         except Exception:
             ttl = 1
         if ttl <= 0:
-            print(f"[MessageRouter] Dropping message with ttl<=0 from {peer_id}: {msg_type} ({msg_id})")
+            logging.getLogger(__name__).debug(f"[MessageRouter] Dropping message with ttl<=0 from {peer_id}: {msg_type} ({msg_id})")
             return
         # decrement ttl for forwarding (if applicable)
         message["ttl"] = ttl - 1
@@ -75,15 +76,16 @@ class MessageRouter:
         if msg_type == "SEND":
         # Mensagem direta
             payload = message.get("payload", "")
+            # Mensagem para usuário: mostrar em stdout
             print(f"\n[Mensagem de {peer_id}]: {payload}\n> ", end="")
             if message.get("require_ack"):
                 # reply ACK to sender using same msg_id as reference
-                print(f"[MessageRouter] Enviando ACK para {peer_id} (ref: {msg_id}).")
+                logging.getLogger(__name__).debug(f"[MessageRouter] Enviando ACK para {peer_id} (ref: {msg_id}).")
                 await self.send_ack(connection, msg_id, peer_id)
 
         elif msg_type == "ACK":
         # Confirmação de recebimento
-            print(f"[MessageRouter] ACK recebido de {peer_id} (ref: {msg_id}).")
+            logging.getLogger(__name__).debug(f"[MessageRouter] ACK recebido de {peer_id} (ref: {msg_id}).")
             if msg_id in self.pending_acks:
                 task = self.pending_acks[msg_id]
                 # cancel the timeout task and remove pending ack
@@ -93,17 +95,18 @@ class MessageRouter:
                     pass
                 del self.pending_acks[msg_id]
             else:
-                print(f"[MessageRouter] ACK inesperado recebido de {peer_id} (ref: {msg_id}).")
+                logging.getLogger(__name__).warning(f"[MessageRouter] ACK inesperado recebido de {peer_id} (ref: {msg_id}).")
 
         elif msg_type == "PUB":
         # Mensagem de difusão
             dst = message.get("dst", "*")
             payload = message.get("payload", "")
+            # Broadcast shown to user
             print(f"\n[Broadcast {dst} de {peer_id}]: {payload}\n> ", end="")
 
         elif msg_type == "PING":
         # Keep-alive(ida)
-            print(f"[MessageRouter] PING recebido de {peer_id} (msg_id: {msg_id}).")
+            logging.getLogger(__name__).debug(f"[MessageRouter] PING recebido de {peer_id} (msg_id: {msg_id}).")
             await self.send_pong(connection, msg_id, peer_id)
 
         elif msg_type == "PONG":
@@ -112,7 +115,7 @@ class MessageRouter:
             if self.keep_alive:
                 self.keep_alive.handle_incoming_pong(message)
             else:
-                print("[MessageRouter] PONG recebido mas KeepAliveManager não está ligado.")
+                logging.getLogger(__name__).warning("[MessageRouter] PONG recebido mas KeepAliveManager não está ligado.")
 
             # Se possível, atualiza RTT na conexão a partir do timestamp enviado no PONG
             try:
@@ -127,15 +130,15 @@ class MessageRouter:
         elif msg_type == "BYE":
         # Fim de sessão(ida)
             reason = message.get("reason", "N/A")
-            print(f"[MessageRouter] {peer_id} enviou BYE (Razão: {reason}). Respondendo BYE_OK.")
+            logging.getLogger(__name__).info(f"[MessageRouter] {peer_id} enviou BYE (Razão: {reason}). Respondendo BYE_OK.")
             await self.send_bye_ok(connection, msg_id, peer_id)
             await connection.close()
         elif msg_type == "BYE_OK":
         # Fim de sessão(volta)
-            print(f"[MessageRouter] {peer_id} respondeu BYE_OK. Fechando conexão.")
+            logging.getLogger(__name__).info(f"[MessageRouter] {peer_id} respondeu BYE_OK. Fechando conexão.")
             await connection.close()
         else:
-            print(f"[MessageRouter] Tipo de mensagem desconhecido de {peer_id}: {msg_type}")
+            logging.getLogger(__name__).warning(f"[MessageRouter] Tipo de mensagem desconhecido de {peer_id}: {msg_type}")
 
     def get_timestamp(self) -> str:
         # Retorna timestamp UTC ISO 8601.
@@ -148,7 +151,7 @@ class MessageRouter:
             if msg_id in self.pending_acks:
                 # timeout reached
                 del self.pending_acks[msg_id]
-                print(f"\n[Timeout] A mensagem {msg_id} para {peer_id} expirou (sem ACK).\n> ", end="")
+                logging.getLogger(__name__).warning(f"[Timeout] A mensagem {msg_id} para {peer_id} expirou (sem ACK).")
                 # Optionally record a connection failure or metric
                 try:
                     PEER_MANAGER.register_connection_failure(peer_id)
@@ -161,7 +164,7 @@ class MessageRouter:
     async def send_unicast(self, target_peer_id: str, payload: str, require_ack: bool = False):
         # Envia mensagem direta
         if target_peer_id not in self.connections:
-            print(f"[Erro] Sem conexão ativa com {target_peer_id}.")
+            logging.getLogger(__name__).warning(f"[Erro] Sem conexão ativa com {target_peer_id}.")
             return
     
         connection = self.connections[target_peer_id]
@@ -232,8 +235,8 @@ class MessageRouter:
                     await conn.send_message(pub_message)
                     sent += 1
             except Exception as e:
-                print(f"[MessageRouter] Falha ao enviar PUB para {peer_id}: {e}")
-        print(f"[MessageRouter] PUB enviado para {sent} peers (dst={dst}).")
+                logging.getLogger(__name__).warning(f"[MessageRouter] Falha ao enviar PUB para {peer_id}: {e}")
+        logging.getLogger(__name__).info(f"[MessageRouter] PUB enviado para {sent} peers (dst={dst}).")
 
 
 # Instância global do roteador, pode ser reassociada/wired pelo orquestrador

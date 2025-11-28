@@ -7,6 +7,7 @@ from typing import Optional, Dict, Any, TYPE_CHECKING
 
 
 # Importações internas
+import logging
 from config import ProtocolConfig
 from state import LOCAL_STATE
 if TYPE_CHECKING:
@@ -22,7 +23,7 @@ class KeepAliveManager:
 
   async def start(self):
     """Função assíncrona que gerencia o agendamento de tarefas."""
-    print("[KeepAlive] start() chamado — iniciando tarefas periódicas.")
+    logging.getLogger(__name__).info("[KeepAlive] start() chamado — iniciando tarefas periódicas.")
 
     self._is_running = True
 
@@ -39,7 +40,7 @@ class KeepAliveManager:
   
   async def send_ping(self):
     """Envia um PING para todas as conexões ativas periodicamente."""
-    print("[KeepAlive] Executando send_ping().")
+    logging.getLogger(__name__).debug("[KeepAlive] Executando send_ping().")
 
     connections = self.active_connections
 
@@ -58,11 +59,11 @@ class KeepAliveManager:
       }
 
       await connection.send_message(message)
-      print(f"[KeepAlive] Registrando PING → peer={peer_id}, msg_id={msg_id}, ts={ts}")
+      logging.getLogger(__name__).debug(f"[KeepAlive] Registrando PING → peer={peer_id}, msg_id={msg_id}, ts={ts}")
 
   async def check_timeout(self):
     """Verifica se houve timeout de um dos pings a cada 10 segundos."""
-    print("[KeepAlive] Executando check_timeout().")
+    logging.getLogger(__name__).debug("[KeepAlive] Executando check_timeout().")
 
     connections = self.active_connections
     expired = []
@@ -72,7 +73,7 @@ class KeepAliveManager:
       ping_info = self.pending_pings.get(peer_id)
       if ping_info and self.timeout(ping_info):
         expired.append(peer_id)
-        print(f"[KeepAlive] Timeout detectado para peer={peer_id}")
+        logging.getLogger(__name__).warning(f"[KeepAlive] Timeout detectado para peer={peer_id}")
 
     # desconectar peers expirados (descomentar quando funções do peer_connection estiverem prontas)
     """
@@ -92,18 +93,18 @@ class KeepAliveManager:
   def handle_incoming_pong(self, message: Dict[str, Any]):
     """Realiza o tratamento de PONG."""
     peer_id = message.get("src")
-    print(f"[KeepAlive] PONG recebido de peer={peer_id}")
+    logging.getLogger(__name__).debug(f"[KeepAlive] PONG recebido de peer={peer_id}")
 
     if peer_id in self.pending_pings:
       stored_msg_id, sent_ts = self.pending_pings.pop(peer_id)
       rtt = time.time() - sent_ts
-      print(f"[KeepAlive] PONG recebido de {peer_id}. RTT: {rtt*1000:.2f} ms.")
+      logging.getLogger(__name__).debug(f"[KeepAlive] PONG recebido de {peer_id}. RTT: {rtt*1000:.2f} ms.")
     else:
-      print(f"[KeepAlive] PONG de {peer_id}, mas não havia ping pendente.")
+      logging.getLogger(__name__).warning(f"[KeepAlive] PONG de {peer_id}, mas não havia ping pendente.")
 
   async def stop(self):
     """Para tudo no KeepAlive."""
-    print("[KeepAlive] stop() chamado — cancelando tarefas.")
+    logging.getLogger(__name__).info("[KeepAlive] stop() chamado — cancelando tarefas.")
 
     self._is_running = False
     for t in self._periodic_tasks.values():

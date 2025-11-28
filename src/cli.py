@@ -5,7 +5,7 @@ import sys
 import threading
 
 from p2p_client import P2PClient, set_local_identity
-# from main import setup_logging
+from peer_table import PEER_MANAGER
 
 @click.group()
 def cli():
@@ -25,8 +25,8 @@ def start(name, namespace, port, log_level):
     # Configura a identidade local
     set_local_identity(name, namespace, port)
 
-    # Configura o logging
-    # setup_logging(log_level)
+    from main import setup_logging
+    setup_logging(log_level)
 
     # Inicializa o Orquestrador P2P
     client = P2PClient()
@@ -64,8 +64,19 @@ def handle_client_commands(client, raw_command: str):
     elif command == '/peers':
         if len(parts) == 2:
             namespace = parts[1]
-            click.echo(f"Descobrindo peers no namespace '{namespace}'...")
-            asyncio.run(client.discover_in_namespace(namespace))
+            if namespace == '*':
+                peers = PEER_MANAGER.get_all_peers()
+                click.echo("Listando todos os peers:")
+            elif namespace.startswith('#'):
+                ns = namespace[1:]
+                peers = PEER_MANAGER.get_peers_in_namespace(ns)
+                click.echo(f"Listando peers no namespace '{ns}':")
+            else:
+                click.echo("Uso: /peers [* | #namespace]")
+                return
+            for peer in peers:
+                status = "Conectado" if peer.is_connected else "Desconectado"
+                click.echo(f"- {peer.peer_id} ({peer.ip}:{peer.port}) - {status}")
         else:
             click.echo("Uso: /peers [* | #namespace]")
     elif command == '/pub':
@@ -119,7 +130,7 @@ def handle_client_commands(client, raw_command: str):
 /quit - Encerra o cliente P2P.""")
     elif command == '/quit':
         click.echo("Encerrando o cliente P2P...")
-        # client.stop()
+        asyncio.run_coroutine_threadsafe(client.stop(), client.get_event_loop())
         sys.exit(0)
     else:
         click.echo(f"Comando desconhecido: {command}")

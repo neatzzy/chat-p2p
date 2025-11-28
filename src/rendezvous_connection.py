@@ -68,10 +68,12 @@ class RendezvousConnection:
         try:
             await self._send_and_receive(message)
             
-            print(f"[Rendezvous] Registro OK. Peer: {LOCAL_STATE.peer_id}")
+            import logging
+            logging.getLogger(__name__).info(f"[Rendezvous] Registro OK. Peer: {LOCAL_STATE.peer_id}")
             return True
         except RendezvousConnectionError as e:
-            print(f"[Rendezvous ERROR] Falha no registro: {str(e)}")
+            import logging
+            logging.getLogger(__name__).error(f"[Rendezvous ERROR] Falha no registro: {str(e)}")
             return False
         
     async def discover(self, namespace) -> List[Dict[str, Any]]:
@@ -85,10 +87,12 @@ class RendezvousConnection:
         try:
             response = await self._send_and_receive(message)
             peers = response.get("peers", [])
-            print(f"[Rendezvous] Descobertos {len(peers)} peers no namespace '{namespace}'.")
+            import logging
+            logging.getLogger(__name__).debug(f"[Rendezvous] Descobertos {len(peers)} peers no namespace '{namespace}'.")
             return peers
         except RendezvousConnectionError as e:
-            print(f"[Rendezvous ERROR] Falha na descoberta: {str(e)}")
+            import logging
+            logging.getLogger(__name__).error(f"[Rendezvous ERROR] Falha na descoberta: {str(e)}")
             return []
     async def unregister(self) -> bool:
         """Remove o registro do peer local do servidor Rendezvous."""
@@ -102,10 +106,12 @@ class RendezvousConnection:
 
         try:
             await self._send_and_receive(message)
-            print(f"[Rendezvous] Unregister OK.")
+            import logging
+            logging.getLogger(__name__).info(f"[Rendezvous] Unregister OK.")
             return True
         except RendezvousConnectionError as e:
-            print(f"[Rendezvous ERROR] Falha ao desregistrar: {str(e)}")
+            import logging
+            logging.getLogger(__name__).error(f"[Rendezvous ERROR] Falha ao desregistrar: {str(e)}")
             return False
         
 # Instance global para uso na aplicação
