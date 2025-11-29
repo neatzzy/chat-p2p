@@ -207,7 +207,7 @@ class PeerConnection:
         """Retorna o RTT médio (ms) para este peer. 0.0 se não houver amostras."""
         if not self._rtt_samples:
             return 0.0
-        return sum(self._rtt_samples) / len(self._rtt_samples) * 1000.0
+        return (sum(self._rtt_samples) / len(self._rtt_samples)) * 1000.0  # Converter para ms
     
     # Iniciar conexãoes OUTBOUND
 

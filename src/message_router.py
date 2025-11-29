@@ -145,6 +145,7 @@ class MessageRouter:
             logging.getLogger(__name__).info(f"[MessageRouter] {peer_id} enviou BYE (Razão: {reason}). Respondendo BYE_OK.")
             await self.send_bye_ok(connection, msg_id, peer_id)
             await connection.close()
+            self.unregister_connection(peer_id)
         elif msg_type == "BYE_OK":
         # Fim de sessão(volta)
             logging.getLogger(__name__).info(f"[MessageRouter] {peer_id} respondeu BYE_OK. Fechando conexão.")

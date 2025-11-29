@@ -261,11 +261,10 @@ class P2PClient:
 
   def get_avg_rtts(self) -> Dict[str, float]:
     """Retorna o RTT médio para cada peer conectado."""
-    rtt_data = {}
-
+    rtts = {}
     for peer_id, connection in self.active_connections.items():
-      rtt_data[peer_id] = connection.get_average_rtt()
-    return rtt_data
+      rtts[peer_id] = connection.get_average_rtt()
+    return rtts
 
   def reconnect_peers(self):
     """Força a reconciliação imediata das conexões de peers."""

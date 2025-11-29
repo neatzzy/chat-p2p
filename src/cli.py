@@ -6,6 +6,7 @@ import threading
 
 from p2p_client import P2PClient, set_local_identity
 from peer_table import PEER_MANAGER
+from rendezvous_connection import RENDEZVOUS_CONNECTION
 
 @click.group()
 def cli():
@@ -64,6 +65,7 @@ def handle_client_commands(client, raw_command: str):
     elif command == '/peers':
         if len(parts) == 2:
             namespace = parts[1]
+            asyncio.run_coroutine_threadsafe(RENDEZVOUS_CONNECTION.discover(namespace), client.get_event_loop())
             if namespace == '*':
                 peers = PEER_MANAGER.get_all_peers()
                 click.echo("Listando todos os peers:")
@@ -100,9 +102,9 @@ def handle_client_commands(client, raw_command: str):
     elif command == '/rtt':
         if len(parts) == 1:
             rtts = client.get_avg_rtts()
+            click.echo("Exibindo RTT médio por peer...")
             for peer_id, rtt in rtts.items():
                 click.echo(f"- {peer_id}: {rtt} ms")
-            click.echo("Exibindo RTT médio por peer...")
         else:
             click.echo("Uso: /rtt")
     elif command == '/reconnect':
