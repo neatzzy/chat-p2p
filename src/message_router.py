@@ -173,7 +173,7 @@ class MessageRouter:
             # normal cancellation when ACK arrives
             pass
 
-    async def send_unicast(self, target_peer_id: str, payload: str, require_ack: bool = False):
+    async def send_unicast(self, target_peer_id: str, payload: str, require_ack: bool = True):
         # Envia mensagem direta
         if target_peer_id not in self.connections:
             logging.getLogger(__name__).warning(f"[Erro] Sem conexão ativa com {target_peer_id}.")

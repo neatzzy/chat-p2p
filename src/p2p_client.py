@@ -195,36 +195,27 @@ class P2PClient:
     return str(uuid.uuid4())
 
   def send_direct_message(self, dst_peer_id: str, message: str):
-    """Envia uma mensagem direta para um peer específico."""
+    """Envia uma mensagem direta para um peer específico usando o MessageRouter e registra um ack pendente."""
     conn = self.active_connections.get(dst_peer_id)
 
     if not conn:
       logging.getLogger(__name__).warning(f"[Client ERROR] Conexão para peer_id {dst_peer_id} não encontrada.")
       return
     
-    message = {
-      "type": "SEND",
-      "msg_id": self._get_msg_id(),
-      "src": LOCAL_STATE.peer_id,
-      "dst": dst_peer_id,
-      "payload": message,
-      "require_ack": True,
-      "ttl": ProtocolConfig.TTL}
-    
-    # PeerConnection lida com o envio real — agendar na event loop do orquestrador
+    # Envia a mensagem via MessageRouter (router monta o envelope)
     try:
       loop = self.get_event_loop()
     except Exception:
       loop = None
 
     if loop:
-      asyncio.run_coroutine_threadsafe(conn.send_message(message), loop)
+      asyncio.run_coroutine_threadsafe(self.router.send_unicast(dst_peer_id, message, require_ack=True), loop)
     else:
-      # fallback: tentar criar uma tarefa no loop atual (pode lançar se não houver loop)
       try:
-        asyncio.create_task(conn.send_message(message))
+        asyncio.create_task(self.router.send_unicast(dst_peer_id, message, require_ack=True))
       except RuntimeError:
         logging.getLogger(__name__).warning("[Client ERROR] Nenhum event loop disponível para enviar a mensagem.")
+
     logging.getLogger(__name__).info(f"[Client] Mensagem SEND enviada para {dst_peer_id}.")
 
   def publish_message(self, namespace: str, message: str):

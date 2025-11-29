@@ -82,6 +82,8 @@ def handle_client_commands(client, raw_command: str):
     elif command == '/pub':
         if len(parts) == 3:
             dst = parts[1]
+            if dst.startswith('#'):
+                dst = dst[1:]
             payload = parts[2]
             client.publish_message(dst, payload)
             click.echo(f"Publicando mensagem para '{dst}': '{payload}'")
