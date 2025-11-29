@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class KeepAliveManager:
   """Gerenciador principal da lógica de PING/PONG."""
-  def __init__(self, active_connections: Dict[str, PeerConnection]):
+  def __init__(self, active_connections: Dict[str, "PeerConnection"]):
     self.active_connections = active_connections
     self._periodic_tasks: Dict[str, asyncio.Task] = {} 
     self.pending_pings: Dict[str, tuple[str, float]] = {}

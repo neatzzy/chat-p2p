@@ -30,7 +30,7 @@ class MessageRouter:
         self.keep_alive: Optional["KeepAliveManager"] = keep_alive
         self.pending_acks: Dict[str, asyncio.Task] = {}
         
-    def register_connection(self, peer_id: str, connection: PeerConnection):
+    def register_connection(self, peer_id: str, connection: "PeerConnection"):
         # Registra conexão P2P bem sucedida
         self.connections[peer_id] = connection
         PEER_MANAGER.register_successful_connection(peer_id)
@@ -49,7 +49,7 @@ class MessageRouter:
         # Informa PEER_MANAGER
         PEER_MANAGER.register_disconnection(peer_id)
 
-    async def handle_incoming_message(self, connection: PeerConnection, message: Dict[str, Any]):
+    async def handle_incoming_message(self, connection: "PeerConnection", message: Dict[str, Any]):
 
         # Processas uma mensagem recebida de um PeerConnection
         msg_type = message.get("type")
@@ -225,7 +225,7 @@ class MessageRouter:
         }
         await connection.send_message(message)
 
-    async def send_pong(self, connection: PeerConnection, msg_id: str, target_peer_id: str):
+    async def send_pong(self, connection: "PeerConnection", msg_id: str, target_peer_id: str):
         # Envia PONG
         message = {
             "type": "PONG",

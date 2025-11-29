@@ -30,5 +30,5 @@ if __name__ == '__main__':
         cli()
     except Exception as e:
         # Captura exceções não tratadas durante o setup do CLI
-        logging.critical(f"Erro fatal na inicialização: {e}")
+        logging.exception("Erro fatal na inicialização")
         sys.exit(1)
