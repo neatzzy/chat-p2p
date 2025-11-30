@@ -109,7 +109,7 @@ def handle_client_commands(client, raw_command: str):
             rtts = client.get_avg_rtts()
             click.echo("Exibindo RTT médio por peer...")
             for peer_id, rtt in rtts.items():
-                click.echo(f"- {peer_id}: {rtt} ms")
+                click.echo(f"- {peer_id}: {rtt:.2f} ms")
         else:
             click.echo("Uso: /rtt")
     elif command == '/reconnect':

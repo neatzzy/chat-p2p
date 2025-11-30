@@ -96,6 +96,11 @@ class KeepAliveManager:
       stored_msg_id, sent_ts = self.pending_pings.pop(peer_id)
       rtt = time.time() - sent_ts
       logging.getLogger(__name__).debug(f"[KeepAlive] PONG recebido de {peer_id}. RTT: {rtt*1000:.2f} ms.")
+      conn = self.active_connections.get(peer_id)
+      if conn is not None:
+        conn.add_rtt_sample(rtt)
+      else:
+        logging.getLogger(__name__).warning(f"[KeepAlive] Recebi PONG de {peer_id}, mas não há conexão ativa.")
     else:
       logging.getLogger(__name__).warning(f"[KeepAlive] PONG de {peer_id}, mas não havia ping pendente.")
 
