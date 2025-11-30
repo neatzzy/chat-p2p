@@ -28,7 +28,10 @@ class MessageRouter:
         self.connections: Dict[str, "PeerConnection"] = connections if connections is not None else {}
         # Rastreamento de estado de protocolo(acks)
         self.keep_alive: Optional["KeepAliveManager"] = keep_alive
+        # pending_acks mantém Task do watchdog por msg_id
         self.pending_acks: Dict[str, asyncio.Task] = {}
+        # _ack_waiters permite sinalizar a chegada do ACK para um msg_id (Event)
+        self._ack_waiters: Dict[str, asyncio.Event] = {}
         
     def register_connection(self, peer_id: str, connection: "PeerConnection"):
         # Registra conexão P2P bem sucedida
@@ -41,10 +44,15 @@ class MessageRouter:
         if connection is None:
             return
         # Limpa ACKs pendentes 
-        acks_to_remove = [msg_id for msg_id, task in self.pending_acks.items() if task.get_name().startswith(peer_id)]
+        acks_to_remove = [msg_id for msg_id, task in self.pending_acks.items() if peer_id in (task.get_name() or '')]
         for msg_id in acks_to_remove:
-            self.pending_acks[msg_id].cancel()
-            del self.pending_acks[msg_id]
+            try:
+                self.pending_acks[msg_id].cancel()
+            except Exception:
+                pass
+            self.pending_acks.pop(msg_id, None)
+            # também remove waiter se existir
+            self._ack_waiters.pop(msg_id, None)
             logging.getLogger(__name__).debug(f"[Router] ACK pendente {msg_id} para {peer_id} cancelado.")
         # Informa PEER_MANAGER
         PEER_MANAGER.register_disconnection(peer_id)
@@ -98,14 +106,17 @@ class MessageRouter:
         elif msg_type == "ACK":
         # Confirmação de recebimento
             logging.getLogger(__name__).debug(f"[MessageRouter] ACK recebido de {peer_id} (ref: {msg_id}).")
-            if msg_id in self.pending_acks:
-                task = self.pending_acks[msg_id]
-                # cancela a tarefa de timeout e remove o ACK pendente
+            # Se existe um waiter, sinaliza-o para que o watchdog finalize corretamente
+            waiter = self._ack_waiters.get(msg_id)
+            if waiter:
                 try:
-                    task.cancel()
+                    waiter.set()
                 except Exception:
                     pass
-                del self.pending_acks[msg_id]
+
+            if msg_id in self.pending_acks:
+                # O watchdog fará a limpeza quando detectar o waiter setado; apenas logamos aqui
+                logging.getLogger(__name__).debug(f"[MessageRouter] ACK correspondendo a watchdog para {peer_id} (ref: {msg_id}).")
             else:
                 logging.getLogger(__name__).warning(f"[MessageRouter] ACK inesperado recebido de {peer_id} (ref: {msg_id}).")
 
@@ -174,6 +185,58 @@ class MessageRouter:
             # normal cancellation when ACK arrives
             pass
 
+    async def _ack_watchdog(self, msg_id: str, peer_id: str, connection: "PeerConnection", message: Dict[str, Any], max_retries: int = 3):
+        """Monitora a chegada do ACK e reenvia a mensagem em caso de timeout.
+
+        Estratégia:
+        - espera por `ProtocolConfig.ACK_TIMEOUT_SEC` por vez (exponencial),
+        - se o waiter não for acionado, reenvia a vez e aumenta o delay,
+        - ao receber ACK (outro código chama `waiter.set()`), o watchdog termina e limpa estruturas.
+        """
+        delay = ProtocolConfig.ACK_TIMEOUT_SEC
+        retries = 0
+        waiter = asyncio.Event()
+        self._ack_waiters[msg_id] = waiter
+
+        try:
+            while retries < max_retries:
+                try:
+                    await asyncio.wait_for(waiter.wait(), timeout=delay)
+                    # ACK recebido
+                    logging.getLogger(__name__).debug(f"[ACK Watchdog] ACK recebido para {msg_id} (peer={peer_id}).")
+                    break
+                except asyncio.TimeoutError:
+                    # retransmit
+                    retries += 1
+                    try:
+                        logging.getLogger(__name__).warning(f"[ACK Watchdog] Reenvio {retries}/{max_retries} de {msg_id} para {peer_id}.")
+                        await connection.send_message(message)
+                    except Exception as e:
+                        logging.getLogger(__name__).error(f"[ACK Watchdog] Falha ao reenviar {msg_id} para {peer_id}: {e}")
+                    delay *= 2
+
+            # Se saiu do loop sem que waiter fosse setado -> falha final
+            if not waiter.is_set():
+                logging.getLogger(__name__).warning(f"[ACK Watchdog] Sem ACK após {retries} tentativas para {msg_id} -> registrando falha de conexão {peer_id}.")
+                try:
+                    PEER_MANAGER.register_connection_failure(peer_id)
+                except Exception:
+                    pass
+
+        except asyncio.CancelledError:
+            # Cancelamento externo (por ex. desconexão) — apenas limpa
+            logging.getLogger(__name__).debug(f"[ACK Watchdog] Cancelado para {msg_id} (peer={peer_id}).")
+        finally:
+            # cleanup: remover entradas pendentes
+            try:
+                self.pending_acks.pop(msg_id, None)
+            except Exception:
+                pass
+            try:
+                self._ack_waiters.pop(msg_id, None)
+            except Exception:
+                pass
+
     async def send_unicast(self, target_peer_id: str, payload: str, require_ack: bool = True):
         # Envia mensagem direta
         if target_peer_id not in self.connections:
@@ -196,10 +259,10 @@ class MessageRouter:
         # Envia realmente a mensagem (respeitando ttl)
         await connection.send_message(message)
         if require_ack:
-            # cria task para timeout de ACK e nomeia com peer:msg para facilitar debug
-            t = asyncio.create_task(self.handle_ack_timeout(msg_id, target_peer_id))
+            # cria task watchdog para gerenciar retransmissões de ACK e nomeia para debug
+            t = asyncio.create_task(self._ack_watchdog(msg_id, target_peer_id, connection, message, max_retries=3))
             try:
-                t.set_name(f"ack_timeout:{target_peer_id}:{msg_id}")
+                t.set_name(f"ack_watchdog:{target_peer_id}:{msg_id}")
             except Exception:
                 pass
             self.pending_acks[msg_id] = t

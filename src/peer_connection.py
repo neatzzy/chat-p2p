@@ -214,7 +214,9 @@ class PeerConnection:
 async def create_outbound_connection(peer_info: PeerInfo) -> Optional['PeerConnection']:
         """Tenta estabelecer uma conexão TCP de saída com o peer e executa o Handshake."""
         try:
-            reader, writer = await asyncio.open_connection(peer_info.ip, peer_info.port)
+            # Aplique o timeout de conexão usando a configuração do protocolo
+            conn_coro = asyncio.open_connection(peer_info.ip, peer_info.port)
+            reader, writer = await asyncio.wait_for(conn_coro, timeout=ProtocolConfig.CONNECT_TIMEOUT_SEC)
 
             connection = PeerConnection(peer_info, reader, writer)
 
@@ -226,7 +228,6 @@ async def create_outbound_connection(peer_info: PeerInfo) -> Optional['PeerConne
             return None
         
         except Exception as e:
-            PEER_MANAGER.register_connection_failure(peer_info.peer_id)
             logging.getLogger(__name__).warning(f"[PeerConnection] Falha ao conectar com o peer {peer_info.peer_id}: {e}")
             return None
             

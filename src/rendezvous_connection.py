@@ -66,7 +66,10 @@ class RendezvousConnection:
         }
 
         try:
-            await self._send_and_receive(message)
+            response = await self._send_and_receive(message)
+            status = response.get("status")
+            if status != "OK":
+                raise RendezvousConnectionError(f"Falha no registro: {response.get('error', 'Desconhecido')}")
             
             import logging
             logging.getLogger(__name__).info(f"[Rendezvous] Registro OK. Peer: {LOCAL_STATE.peer_id}")

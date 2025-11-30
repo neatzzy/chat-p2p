@@ -57,6 +57,8 @@ class ProtocolConfig:
 
     # Timeout de conexão TCP
     HANDSHAKE_TIMEOUT_SEC = 5 # Timeout para completar o handshake HELLO/HELLO_OK
+    # Timeout ao estabelecer a conexão TCP (connect)
+    CONNECT_TIMEOUT_SEC = 5
 
 
 # --- Configurações da Interface de Usuário (CLI) ---

@@ -65,7 +65,7 @@ def handle_client_commands(client, raw_command: str):
     elif command == '/peers':
         if len(parts) == 2:
             namespace = parts[1]
-            asyncio.run_coroutine_threadsafe(RENDEZVOUS_CONNECTION.discover(namespace), client.get_event_loop())
+            asyncio.run_coroutine_threadsafe(client.discover_in_namespace(namespace), client.get_event_loop())
             if namespace == '*':
                 peers = PEER_MANAGER.get_all_peers()
                 click.echo("Listando todos os peers:")

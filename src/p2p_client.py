@@ -152,9 +152,10 @@ class P2PClient:
     addr = writer.get_extra_info('peername')
     temp_peer_id = f"{addr[0]}:{addr[1]}"
 
+    # Assume um PeerInfo temporário até o handshake ser concluído
     temp_peer_info = PeerInfo(
       ip=addr[0],
-      port=addr[1],
+      port=0,
       name="unknown_inbound",
       namespace="inbound",
     )
@@ -169,6 +170,14 @@ class P2PClient:
       # Vincula o roteador para que mensagens recebidas sejam roteadas
       try:
         connection.router = self.router
+      except Exception:
+        pass
+      # Atualiza o PeerInfo com os dados corretos após o handshake
+      try:
+        peer_entry = PEER_MANAGER.get_peer(connection.peer_info.peer_id)
+        if peer_entry:
+          connection.peer_info.ip = peer_entry.ip
+          connection.peer_info.port = peer_entry.port
       except Exception:
         pass
       self.active_connections[connection.peer_info.peer_id] = connection
