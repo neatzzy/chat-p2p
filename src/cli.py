@@ -139,10 +139,15 @@ def handle_client_commands(client, raw_command: str):
 /quit - Encerra o cliente P2P.""")
     elif command == '/quit':
         click.echo("Encerrando o cliente P2P...")
-        asyncio.run_coroutine_threadsafe(client.stop(), client.get_event_loop())
+        try:
+            future = asyncio.run_coroutine_threadsafe(client.stop(), client.get_event_loop())
+            # Espera a corrotina terminar (com timeout para segurança)
+            future.result(timeout=10)  # 10 segundos de timeout
+        except TimeoutError:
+            click.echo("Timeout ao encerrar cliente, forçando saída...")
+        except Exception as e:
+            click.echo(f"Erro ao encerrar cliente: {e}")
         sys.exit(0)
-    else:
-        click.echo(f"Comando desconhecido: {command}")
 
 if __name__ == '__main__':
     # python cli.py start --name alice --namespace CIC

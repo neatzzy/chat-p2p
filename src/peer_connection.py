@@ -175,6 +175,8 @@ class PeerConnection:
     async def close(self):
         """Fecha a conexão com o peer."""
         self.is_active = False
+        self.peer_info.is_connected = False
+        self.peer_info.is_stale = True
         if self.writer:
             self.writer.close()
             await self.writer.wait_closed()

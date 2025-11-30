@@ -52,10 +52,15 @@ class P2PClient:
     """Função assíncrona que gerencia o agendamento de tarefas."""
     self._loop = asyncio.get_event_loop()
     self._listener_task = asyncio.create_task(self._start_listening_server())
+    
+    # Inicia o keepAliveManager
+    print("[DEBUG P2PClient] Iniciando KeepAliveManager...")
+    await self.keep_alive.start()
+    print("[DEBUG P2PClient] KeepAliveManager iniciado")
+    
     self._periodic_tasks['register'] = asyncio.create_task(self._periodic_task_runner(self._refresh_register, RendezvousConfig.REGISTER_REFRESH_INTERVAL_SEC))
     self._periodic_tasks['discover'] = asyncio.create_task(self._periodic_task_runner(self._run_discovery_and_reconcile, RendezvousConfig.DISCOVER_INTERVAL_SEC))
-    self._periodic_tasks['keep_alive'] = asyncio.create_task(self._periodic_task_runner(self.keep_alive.send_ping, ProtocolConfig.PING_INTERVAL_SEC))
-
+    
     await asyncio.gather(*self._periodic_tasks.values(), return_exceptions=True)
 
   async def stop(self):
@@ -67,6 +72,9 @@ class P2PClient:
     await RENDEZVOUS_CONNECTION.unregister()
 
     await self._send_bye_and_close_connections()
+
+    # Para o KeepAliveManager
+    await self.keep_alive.stop()
 
     for task in self._periodic_tasks.values():
       task.cancel()
