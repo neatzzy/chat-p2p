@@ -18,7 +18,7 @@ def setup_logging(level: str = 'INFO') -> None:
     numeric_level = getattr(logging, level.upper(), logging.INFO)
     logging.basicConfig(
         level=numeric_level,
-        format='%(asctime)s %(levelname)s %(name)s: %(message)s',
+        format='%(asctime)s %(message)s',
         datefmt='%H:%M:%S'
     )
 
@@ -30,5 +30,5 @@ if __name__ == '__main__':
         cli()
     except Exception as e:
         # Captura exceções não tratadas durante o setup do CLI
-        logging.exception("Erro fatal na inicialização")
+        logging.exception("[MAIN] Erro fatal na inicialização")
         sys.exit(1)

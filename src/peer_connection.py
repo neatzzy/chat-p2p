@@ -50,7 +50,7 @@ class PeerConnection:
             await self.writer.drain()
         except Exception as e:
             logger = logging.getLogger(__name__)
-            logger.error(f"[PeerConnection] Erro ao enviar mensagem para o peer {self.peer_info.peer_id}: {e}")
+            logger.error(f"[PeerConnection] [ERROR] Erro ao enviar mensagem para o peer {self.peer_info.peer_id}: {e}")
             await self.close()
 
     # Handshake (HELLO / HELLO_OK)
@@ -82,7 +82,7 @@ class PeerConnection:
                 expeted_type = "HELLO"
                 flow_type = "INBOUND"
 
-            logging.getLogger(__name__).debug(f"[Handshake] {flow_type} iniciado com {self.peer_info.peer_id}")
+            logging.getLogger(__name__).debug(f"[PeerConnection] [Handshake] {flow_type} iniciado com {self.peer_info.peer_id}")
 
             # Se já recebemos a mensagem HELLO (fluxo Inbound), usamos ela
             if pre_received is None:
@@ -92,13 +92,13 @@ class PeerConnection:
                 message = pre_received
 
             if message.get("type") != expeted_type:
-                logging.getLogger(__name__).warning(f"[Handshake ERROR] Esperado {expeted_type}, recebido {message.get('type')}")
+                logging.getLogger(__name__).warning(f"[PeerConnection] [Handshake ERROR] Esperado {expeted_type}, recebido {message.get('type')}")
                 return False
             
             remote_peer_id = message.get("peer_id")
 
             if not remote_peer_id:
-                logging.getLogger(__name__).warning(f"[Handshake ERROR] peer_id ausente na mensagem")
+                logging.getLogger(__name__).warning(f"[PeerConnection] [Handshake ERROR] peer_id ausente na mensagem")
                 return False
             
             # Store remote peer_id for both initiator and responder flows
@@ -124,14 +124,14 @@ class PeerConnection:
 
             self.is_active = True
             self.peer_info.is_connected = True
-            logging.getLogger(__name__).info(f"[Handshake SUCCESS] Conexão {flow_type} estabelecida com {self.peer_info.peer_id}")
+            logging.getLogger(__name__).info(f"[PeerConnection] [Handshake SUCCESS] Conexão {flow_type} estabelecida com {self.peer_info.peer_id}")
             return True
         
         except asyncio.TimeoutError:
-            logging.getLogger(__name__).warning(f"[Handshake ERROR] Timeout durante o Handshake com {self.peer_info.peer_id}")
+            logging.getLogger(__name__).warning(f"[PeerConnection] [Handshake ERROR] Timeout durante o Handshake com {self.peer_info.peer_id}")
             return False
         except Exception as e:
-            logging.getLogger(__name__).error(f"[Handshake ERROR] Erro inesperado durante o Handshake com {self.peer_info.peer_id}: {e}")
+            logging.getLogger(__name__).error(f"[PeerConnection] [Handshake ERROR] Erro inesperado durante o Handshake com {self.peer_info.peer_id}: {e}")
             return False
 
     # Ouvinte de conexão e loop principal
@@ -162,7 +162,7 @@ class PeerConnection:
         except asyncio.IncompleteReadError:
             logging.getLogger(__name__).info(f"[PeerConnection] Conexão fechada pelo peer {self.peer_info.peer_id}")
         except Exception as e:
-            logging.getLogger(__name__).error(f"[PeerConnection] Erro inesperado com {self.peer_info.peer_id}: {e}")
+            logging.getLogger(__name__).error(f"[PeerConnection] [ERROR] Erro inesperado com {self.peer_info.peer_id}: {e}")
         finally:
             logging.getLogger(__name__).info(f"[PeerConnection] Encerrando conexão com o peer {self.peer_info.peer_id}")
             await self.close()
@@ -196,7 +196,7 @@ class PeerConnection:
             }
             await self.send_message(message)
         except Exception as e:
-            logging.getLogger(__name__).error(f"[PeerConnection] Erro ao enviar BYE para {self.peer_info.peer_id}: {e}")
+            logging.getLogger(__name__).error(f"[PeerConnection] [ERROR] Erro ao enviar BYE para {self.peer_info.peer_id}: {e}")
         finally:
             await self.close()
 
@@ -233,7 +233,7 @@ async def create_outbound_connection(peer_info: PeerInfo) -> Optional['PeerConne
             return None
         
         except Exception as e:
-            logging.getLogger(__name__).warning(f"[PeerConnection] Falha ao conectar com o peer {peer_info.peer_id}: {e}")
+            logging.getLogger(__name__).warning(f"[PeerConnection] [ERROR] Falha ao conectar com o peer {peer_info.peer_id}: {e}")
             return None
             
 

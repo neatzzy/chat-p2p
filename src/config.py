@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import logging
 
 # --- Configurações de Ambiente ---
 BASE_DIR = Path(__file__).resolve().parent

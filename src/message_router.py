@@ -166,7 +166,7 @@ class MessageRouter:
                 else:
                     logging.getLogger(__name__).warning(f"[MessageRouter] HELLO recebido mas sem PeerConnection válido para {peer_id}.")
             except Exception as e:
-                logging.getLogger(__name__).error(f"[MessageRouter] Erro ao processar HELLO de {peer_id}: {e}")
+                logging.getLogger(__name__).error(f"[MessageRouter] [ERROR] Erro ao processar HELLO de {peer_id}: {e}")
             return
 
         elif msg_type == "BYE":
@@ -194,7 +194,7 @@ class MessageRouter:
             if msg_id in self.pending_acks:
                 # timeout reached
                 del self.pending_acks[msg_id]
-                logging.getLogger(__name__).warning(f"[Timeout] A mensagem {msg_id} para {peer_id} expirou (sem ACK).")
+                logging.getLogger(__name__).warning(f"[MessageRouter] [Timeout] A mensagem {msg_id} para {peer_id} expirou (sem ACK).")
                 # Optionally record a connection failure or metric
                 try:
                     PEER_MANAGER.register_connection_failure(peer_id)
@@ -222,21 +222,21 @@ class MessageRouter:
                 try:
                     await asyncio.wait_for(waiter.wait(), timeout=delay)
                     # ACK recebido
-                    logging.getLogger(__name__).debug(f"[ACK Watchdog] ACK recebido para {msg_id} (peer={peer_id}).")
+                    logging.getLogger(__name__).debug(f"[MessageRouter] [ACK Watchdog] ACK recebido para {msg_id} (peer={peer_id}).")
                     break
                 except asyncio.TimeoutError:
                     # retransmit
                     retries += 1
                     try:
-                        logging.getLogger(__name__).warning(f"[ACK Watchdog] Reenvio {retries}/{max_retries} de {msg_id} para {peer_id}.")
+                        logging.getLogger(__name__).warning(f"[MessageRouter] [ACK Watchdog] Reenvio {retries}/{max_retries} de {msg_id} para {peer_id}.")
                         await connection.send_message(message)
                     except Exception as e:
-                        logging.getLogger(__name__).error(f"[ACK Watchdog] Falha ao reenviar {msg_id} para {peer_id}: {e}")
+                        logging.getLogger(__name__).error(f"[MessageRouter] [ACK Watchdog] Falha ao reenviar {msg_id} para {peer_id}: {e}")
                     delay *= 2
 
             # Se saiu do loop sem que waiter fosse setado -> falha final
             if not waiter.is_set():
-                logging.getLogger(__name__).warning(f"[ACK Watchdog] Sem ACK após {retries} tentativas para {msg_id} -> registrando falha de conexão {peer_id}.")
+                logging.getLogger(__name__).warning(f"[MessageRouter] [ACK Watchdog] Sem ACK após {retries} tentativas para {msg_id} -> registrando falha de conexão {peer_id}.")
                 try:
                     PEER_MANAGER.register_connection_failure(peer_id)
                 except Exception:
@@ -244,7 +244,7 @@ class MessageRouter:
 
         except asyncio.CancelledError:
             # Cancelamento externo (por ex. desconexão) — apenas limpa
-            logging.getLogger(__name__).debug(f"[ACK Watchdog] Cancelado para {msg_id} (peer={peer_id}).")
+            logging.getLogger(__name__).debug(f"[MessageRouter] [ACK Watchdog] Cancelado para {msg_id} (peer={peer_id}).")
         finally:
             # cleanup: remover entradas pendentes
             try:
@@ -259,7 +259,7 @@ class MessageRouter:
     async def send_unicast(self, target_peer_id: str, payload: str, require_ack: bool = True):
         # Envia mensagem direta
         if target_peer_id not in self.connections:
-            logging.getLogger(__name__).warning(f"[Erro] Sem conexão ativa com {target_peer_id}.")
+            logging.getLogger(__name__).warning(f"[MessageRouter] [ERROR] Sem conexão ativa com {target_peer_id}.")
             return
     
         connection = self.connections[target_peer_id]
