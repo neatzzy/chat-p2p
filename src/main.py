@@ -22,8 +22,8 @@ def setup_logging(level: str = 'INFO') -> None:
         datefmt='%H:%M:%S'
     )
 
-# Para rodar o programa, use o comando:
-# python -m src.cli start --name <seu_nome> --namespace <seu_namespace> [--port <porta>] [--log-level <nível_de_log>]
+# Para rodar o programa, no diretório "src", use o comando:
+# python main.py start --name <seu_nome> --namespace <seu_namespace>
 
 if __name__ == '__main__':
     try:
