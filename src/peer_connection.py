@@ -66,7 +66,7 @@ class PeerConnection:
         }
         await self.send_message(hello_msg)
 
-    async def do_handshake(self, is_initiator: bool) -> bool:
+    async def do_handshake(self, is_initiator: bool, pre_received: Optional[Dict[str, Any]] = None) -> bool:
         """
         Realiza o Handshake HELLO/HELLO_OK, suportando fluxos Inbound e Outbound.
         
@@ -84,9 +84,12 @@ class PeerConnection:
 
             logging.getLogger(__name__).debug(f"[Handshake] {flow_type} iniciado com {self.peer_info.peer_id}")
 
-            data = await asyncio.wait_for(self.reader.readuntil(ProtocolConfig.MESSAGE_DELIMITER), timeout=ProtocolConfig.HANDSHAKE_TIMEOUT_SEC)
-
-            message = self._decode_message(data)
+            # Se já recebemos a mensagem HELLO (fluxo Inbound), usamos ela
+            if pre_received is None:
+                data = await asyncio.wait_for(self.reader.readuntil(ProtocolConfig.MESSAGE_DELIMITER), timeout=ProtocolConfig.HANDSHAKE_TIMEOUT_SEC)
+                message = self._decode_message(data)
+            else:
+                message = pre_received
 
             if message.get("type") != expeted_type:
                 logging.getLogger(__name__).warning(f"[Handshake ERROR] Esperado {expeted_type}, recebido {message.get('type')}")

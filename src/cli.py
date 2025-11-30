@@ -77,7 +77,12 @@ def handle_client_commands(client, raw_command: str):
                 click.echo("Uso: /peers [* | #namespace]")
                 return
             for peer in peers:
-                status = "Conectado" if peer.is_connected else "Desconectado"
+                if peer.is_connected:
+                    status = "Conectado"
+                elif peer.is_stale:
+                    status = "Stale"
+                else:
+                    status = "Desconectado"
                 click.echo(f"- {peer.peer_id} ({peer.ip}:{peer.port}) - {status}")
         else:
             click.echo("Uso: /peers [* | #namespace]")

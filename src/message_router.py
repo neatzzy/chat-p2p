@@ -150,6 +150,25 @@ class MessageRouter:
             except Exception:
                 pass
 
+        elif msg_type == "HELLO":
+        # Handshake inicial (peer conectando)
+            logging.getLogger(__name__).debug(f"[MessageRouter] HELLO recebido de {peer_id} (msg_id: {msg_id}).")
+            # Se a conexão ainda não realizou o handshake, delega para PeerConnection.do_handshake
+            try:
+                # garante que temos uma conexão válida
+                if connection and hasattr(connection, 'do_handshake'):
+                    # avoid re-running handshake for already-active connections
+                    if not getattr(connection, 'is_active', False):
+                        # passa a mensagem já desserializada para evitar novo read
+                        await connection.do_handshake(is_initiator=False, pre_received=message)
+                    else:
+                        logging.getLogger(__name__).debug(f"[MessageRouter] HELLO recebido mas conexão já ativa para {peer_id}.")
+                else:
+                    logging.getLogger(__name__).warning(f"[MessageRouter] HELLO recebido mas sem PeerConnection válido para {peer_id}.")
+            except Exception as e:
+                logging.getLogger(__name__).error(f"[MessageRouter] Erro ao processar HELLO de {peer_id}: {e}")
+            return
+
         elif msg_type == "BYE":
         # Fim de sessão(ida)
             reason = message.get("reason", "N/A")
