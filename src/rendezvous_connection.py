@@ -1,5 +1,6 @@
 import json
 import asyncio
+import logging
 
 from config import RendezvousConfig, ProtocolConfig
 from state import LOCAL_STATE
@@ -71,11 +72,9 @@ class RendezvousConnection:
             if status != "OK":
                 raise RendezvousConnectionError(f"[Rendezvous] [ERROR] Falha no registro: {response.get('error', 'Desconhecido')}")
             
-            import logging
             logging.getLogger(__name__).info(f"[Rendezvous] Registro OK. Peer: {LOCAL_STATE.peer_id}")
             return True
         except RendezvousConnectionError as e:
-            import logging
             logging.getLogger(__name__).error(f"[Rendezvous] [ERROR] Falha no registro: {str(e)}")
             return False
         
@@ -83,37 +82,46 @@ class RendezvousConnection:
         """Descobre peers registrados no servidor Rendezvous."""
         message = { "type": "DISCOVER" }
 
-        if namespace == "*":
-            message["namespace"] = ""
-        else:
+        if namespace and namespace != '*':
             message["namespace"] = namespace
+
         try:
             response = await self._send_and_receive(message)
             peers = response.get("peers", [])
-            import logging
             logging.getLogger(__name__).debug(f"[Rendezvous] Descobertos {len(peers)} peers no namespace '{namespace}'.")
             return peers
         except RendezvousConnectionError as e:
-            import logging
             logging.getLogger(__name__).error(f"[Rendezvous] [ERROR] Falha na descoberta: {str(e)}")
             return []
     async def unregister(self) -> bool:
         """Remove o registro do peer local do servidor Rendezvous."""
 
+        namespace = getattr(LOCAL_STATE, 'namespace', None)
+        if not namespace:
+            # Tenta extrair do peer_id se namespace não estiver definido
+            peer_id = getattr(LOCAL_STATE, 'peer_id', '') or ''
+            if '@' in peer_id:
+                try:
+                    namespace = peer_id.split('@', 1)[1]
+                except Exception:
+                    namespace = ''
+
+        if not namespace:
+            logging.getLogger(__name__).warning("[Rendezvous] Namespace vazio ao tentar desregistrar.")
+            return False
+
         message = {
             "type": "UNREGISTER",
             "name": LOCAL_STATE.name,
-            "namespace": LOCAL_STATE.namespace,
+            "namespace": namespace,
             "port": LOCAL_STATE.listen_port
         }
 
         try:
             await self._send_and_receive(message)
-            import logging
             logging.getLogger(__name__).info(f"[Rendezvous] Unregister OK.")
             return True
         except RendezvousConnectionError as e:
-            import logging
             logging.getLogger(__name__).error(f"[Rendezvous] [ERROR] Falha ao desregistrar: {str(e)}")
             return False
         

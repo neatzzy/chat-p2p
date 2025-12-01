@@ -76,10 +76,10 @@ class KeepAliveManager:
         logging.getLogger(__name__).warning(f"[KeepAlive] Timeout detectado para peer={peer_id}")
 
     for peer_id in expired:
-      print(f"[KeepAlive] Timeout: {peer_id} não respondeu ao PING.")
+      logging.getLogger(__name__).warning(f"[KeepAlive] Timeout: {peer_id} não respondeu ao PING.")
       conn = self.active_connections.get(peer_id)
       if conn:
-          await conn.send_bye_and_close()
+        await conn.send_bye_and_close()
       self.pending_pings.pop(peer_id, None)
       self.active_connections.pop(peer_id, None)
 

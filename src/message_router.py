@@ -96,8 +96,8 @@ class MessageRouter:
         if msg_type == "SEND":
         # Mensagem direta
             payload = message.get("payload", "")
-            # Mensagem para usuário: mostrar em stdout
-            print(f"\n[Mensagem de {peer_id}]: {payload}\n> ", end="")
+            # Mensagem para usuário
+            logging.getLogger(__name__).info(f"\n[Mensagem de {peer_id}]: {payload}\n> ", extra={"end": ""})
             if message.get("require_ack"):
                 # responde com ACK ao remetente usando o mesmo msg_id como referência
                 logging.getLogger(__name__).debug(f"[MessageRouter] Enviando ACK para {peer_id} (ref: {msg_id}).")
@@ -125,7 +125,7 @@ class MessageRouter:
             dst = message.get("dst", "*")
             payload = message.get("payload", "")
             # Broadcast shown to user
-            print(f"\n[Broadcast {dst} de {peer_id}]: {payload}\n> ", end="")
+            logging.getLogger(__name__).info(f"\n[Broadcast {dst} de {peer_id}]: {payload}\n> ", end="")
 
         elif msg_type == "PING":
         # Keep-alive(ida)
