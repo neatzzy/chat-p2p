@@ -79,7 +79,7 @@ class KeepAliveManager:
       print(f"[KeepAlive] Timeout: {peer_id} não respondeu ao PING.")
       conn = self.active_connections.get(peer_id)
       if conn:
-          await conn.close()
+          await conn.send_bye_and_close()
       self.pending_pings.pop(peer_id, None)
       self.active_connections.pop(peer_id, None)
 

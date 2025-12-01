@@ -65,7 +65,7 @@ class PeerTableManager:
 
     if peer.reconnect_attempts >= ProtocolConfig.MAX_RECONNECT_ATTEMPTS: # Marca como STALE se excedeu tentativas
       peer.is_stale = True
-      logging.getLogger(__name__).warning(f"[{peer_id}] Atingiu o máximo de tentativas de reconexão. Marcado como STALE.")
+      logging.getLogger(__name__).warning(f"[PeerManager] [{peer_id}] Atingiu o máximo de tentativas de reconexão. Marcado como STALE.")
       peer.next_reconnect_time = float('inf') # Não tentar mais
       return
 
@@ -78,7 +78,7 @@ class PeerTableManager:
     delay += jitter
 
     peer.next_reconnect_time = time.time() + delay
-    logging.getLogger(__name__).info(f"[{peer_id}] Falha de conexão registrada. Tentativa {peer.reconnect_attempts}. Próxima tentativa em {delay:.2f} segundos.")
+    logging.getLogger(__name__).info(f"[PeerManager] [{peer_id}] Falha de conexão registrada. Tentativa {peer.reconnect_attempts}. Próxima tentativa em {delay:.2f} segundos.")
   
   def register_successful_connection(self, peer_id: str):
     """Registra uma conexão bem-sucedida, resetando o estado de reconexão do peer."""
@@ -90,7 +90,7 @@ class PeerTableManager:
     peer.is_stale = False
     peer.reconnect_attempts = 0
     peer.next_reconnect_time = 0.0
-    logging.getLogger(__name__).info(f"[{peer_id}] Conexão bem-sucedida. Estado de reconexão resetado.")
+    logging.getLogger(__name__).info(f"[PeerManager] [{peer_id}] Conexão bem-sucedida. Estado de reconexão resetado.")
 
   def register_disconnection(self, peer_id: str):
     """Lidar com BYE/BYE_OK ou desconexões inesperadas."""
@@ -99,7 +99,7 @@ class PeerTableManager:
       return
     
     peer.is_connected = False
-    logging.getLogger(__name__).info(f"[{peer_id}] Desconectado. Marcado como não conectado.")
+    logging.getLogger(__name__).info(f"[PeerManeger] [{peer_id}] Desconectado. Marcado como não conectado.")
     self.register_connection_failure(peer_id)
 
   def get_all_connected_peers(self) -> List[PeerInfo]:

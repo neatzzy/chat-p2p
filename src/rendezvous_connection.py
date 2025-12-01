@@ -45,14 +45,14 @@ class RendezvousConnection:
 
             # Checar status da resposta
             if response.get("status") != "OK":
-                raise RendezvousConnectionError(f"Erro do servidor Rendezvous: {response.get('error', 'Desconhecido')}")
+                raise RendezvousConnectionError(f"[Rendezvous] [ERROR] Erro do servidor Rendezvous: {response.get('error', 'Desconhecido')}")
             
             return response
         
         except (ConnectionRefusedError, TimeoutError, asyncio.IncompleteReadError, ConnectionError) as e:
-            raise RendezvousConnectionError(f"Erro de conexão com o Rendezvous: {str(e)}")
+            raise RendezvousConnectionError(f"[Rendezvous] [ERROR] Erro de conexão com o Rendezvous: {str(e)}")
         except json.JSONDecodeError as e:
-            raise RendezvousConnectionError(f"Resposta inválida do servidor Rendezvous: {str(e)}")
+            raise RendezvousConnectionError(f"[Rendezvous] [ERROR] Resposta inválida do servidor Rendezvous: {str(e)}")
 
     async def register(self) -> bool:
         """Registra o peer local no servidor Rendezvous.
@@ -69,14 +69,14 @@ class RendezvousConnection:
             response = await self._send_and_receive(message)
             status = response.get("status")
             if status != "OK":
-                raise RendezvousConnectionError(f"Falha no registro: {response.get('error', 'Desconhecido')}")
+                raise RendezvousConnectionError(f"[Rendezvous] [ERROR] Falha no registro: {response.get('error', 'Desconhecido')}")
             
             import logging
             logging.getLogger(__name__).info(f"[Rendezvous] Registro OK. Peer: {LOCAL_STATE.peer_id}")
             return True
         except RendezvousConnectionError as e:
             import logging
-            logging.getLogger(__name__).error(f"[Rendezvous ERROR] Falha no registro: {str(e)}")
+            logging.getLogger(__name__).error(f"[Rendezvous] [ERROR] Falha no registro: {str(e)}")
             return False
         
     async def discover(self, namespace) -> List[Dict[str, Any]]:
@@ -95,7 +95,7 @@ class RendezvousConnection:
             return peers
         except RendezvousConnectionError as e:
             import logging
-            logging.getLogger(__name__).error(f"[Rendezvous ERROR] Falha na descoberta: {str(e)}")
+            logging.getLogger(__name__).error(f"[Rendezvous] [ERROR] Falha na descoberta: {str(e)}")
             return []
     async def unregister(self) -> bool:
         """Remove o registro do peer local do servidor Rendezvous."""
@@ -114,7 +114,7 @@ class RendezvousConnection:
             return True
         except RendezvousConnectionError as e:
             import logging
-            logging.getLogger(__name__).error(f"[Rendezvous ERROR] Falha ao desregistrar: {str(e)}")
+            logging.getLogger(__name__).error(f"[Rendezvous] [ERROR] Falha ao desregistrar: {str(e)}")
             return False
         
 # Instância global para uso na aplicação
