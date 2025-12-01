@@ -102,8 +102,8 @@ class RendezvousConnection:
 
         message = {
             "type": "UNREGISTER",
-            "namespace": LOCAL_STATE.namespace,
             "name": LOCAL_STATE.name,
+            "namespace": LOCAL_STATE.namespace,
             "port": LOCAL_STATE.listen_port
         }
 

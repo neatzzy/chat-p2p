@@ -288,7 +288,6 @@ class P2PClient:
 
 def set_local_identity(name: str, namespace: str, port: int):
   """Define a identidade local do peer."""
-  global LOCAL_STATE
   LOCAL_STATE.name = name
   LOCAL_STATE.namespace = namespace
   LOCAL_STATE.listen_port = port
